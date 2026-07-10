@@ -31,7 +31,8 @@ public class CuratorZookeeperConnectionFactory implements ZookeeperConnectionFac
         client.start();
 
         try {
-            if (!client.blockUntilConnected(5, TimeUnit.SECONDS)) {
+            int timeout = Math.max(params.getConnectionTimeout() / 1000, 5);
+            if (!client.blockUntilConnected(timeout, TimeUnit.SECONDS)) {
                 client.close();
                 throw new IllegalStateException("connect timeout");
             }
@@ -76,9 +77,10 @@ public class CuratorZookeeperConnectionFactory implements ZookeeperConnectionFac
 
         client.start();
         try {
-            if (!client.blockUntilConnected(3, TimeUnit.SECONDS)) {
+            int timeout = Math.max(params.getConnectionTimeout() / 1000, 5);
+            if (!client.blockUntilConnected(timeout, TimeUnit.SECONDS)) {
                 client.close();
-                throw new IllegalStateException("connect " + params.getUrl() + " failed");
+                throw new IllegalStateException("connect " + params.getUrl() + " timeout after " + timeout + "s");
             }
         } catch (InterruptedException e) {
             client.close();

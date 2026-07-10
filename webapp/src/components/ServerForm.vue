@@ -104,7 +104,7 @@ const form = reactive({
   host: 'localhost', port: 2181, alias: '', acl: '',
   sshEnabled: false, sshHost: '', sshPort: 22, sshUsername: '', sshPassword: '',
   remoteHost: '', remotePort: 2181,
-  connTimeout: 5000, sessionTimeout: 15000, maxRetries: 3, retryInterval: 1000, zkVersion: 'auto',
+  connTimeout: 60000, sessionTimeout: 60000, maxRetries: 3, retryInterval: 1000, zkVersion: 'auto',
 })
 
 onMounted(async () => {

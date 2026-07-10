@@ -29,7 +29,7 @@ public class ZookeeperParams {
      * mill seconds
      */
     @Builder.Default
-    private int connectionTimeout = 5000;
+    private int connectionTimeout = 60000;
 
     /**
      * mill seconds

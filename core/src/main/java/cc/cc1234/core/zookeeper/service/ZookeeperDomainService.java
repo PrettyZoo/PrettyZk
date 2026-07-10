@@ -21,29 +21,53 @@ public class ZookeeperDomainService {
 
     private static final Map<String, Zookeeper> zookeeperMap = new ConcurrentHashMap<>();
 
+    // Deduplicate connections by ZK address (host:port) to avoid duplicate sessions
+    private static final Map<String, String> addressToIdMap = new ConcurrentHashMap<>();
+
     private static final Map<String, Terminal> terminalMap = new ConcurrentHashMap<>();
 
     public void connect(ServerConfiguration serverConfig,
                         List<ZookeeperNodeListener> nodeListeners,
                         List<ServerListener> serverListeners) {
-        if (!zookeeperMap.containsKey(serverConfig.getId())) {
-            Zookeeper zookeeper = new ZookeeperFactory().create(serverConfig, nodeListeners, serverListeners);
-            zookeeperMap.put(serverConfig.getId(), zookeeper);
+        String id = serverConfig.getId();
+        if (zookeeperMap.containsKey(id)) {
+            return; // Already connected
         }
+        String address = serverConfig.getHost() + ":" + serverConfig.getPort();
+        // Check if another server config is already connected to the same ZK address
+        String existingId = addressToIdMap.get(address);
+        if (existingId != null && zookeeperMap.containsKey(existingId)) {
+            // Reuse existing connection
+            zookeeperMap.put(id, zookeeperMap.get(existingId));
+            return;
+        }
+        Zookeeper zookeeper = new ZookeeperFactory().create(serverConfig, nodeListeners, serverListeners);
+        zookeeperMap.put(id, zookeeper);
+        addressToIdMap.put(address, id);
     }
 
     public void disconnect(String id) {
-        if (zookeeperMap.containsKey(id)) {
-            zookeeperMap.get(id).disconnect();
-            zookeeperMap.remove(id);
+        if (!zookeeperMap.containsKey(id)) {
+            return;
         }
-        // TODO 考虑将终端独立化
+        Zookeeper zk = zookeeperMap.get(id);
+        // Check if other server configs share this connection
+        boolean shared = zookeeperMap.values().stream().filter(z -> z == zk).count() > 1;
+        if (shared) {
+            zookeeperMap.remove(id);
+            return; // Don't close shared connection
+        }
+        zk.disconnect();
+        zookeeperMap.remove(id);
+        // Clean up address mapping
+        addressToIdMap.values().remove(id);
         closeTerminal(id);
     }
 
     public void disconnectAll() {
-        zookeeperMap.values().forEach(Zookeeper::disconnect);
+        zookeeperMap.values().stream().distinct().forEach(Zookeeper::disconnect);
         zookeeperMap.clear();
+        addressToIdMap.clear();
     }
 
     /**

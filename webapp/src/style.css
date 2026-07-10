@@ -4,11 +4,12 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body {
   height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', Roboto, Oxygen, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', Roboto, Helvetica, Arial, sans-serif;
   font-size: 14px;
+  line-height: 1.5;
   overflow: hidden;
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
@@ -16,78 +17,90 @@ a:hover { text-decoration: underline; }
 /* ===== Light Theme ===== */
 :root {
   --bg-primary: #ffffff;
-  --bg-secondary: #f5f5f5;
-  --bg-tertiary: #e8e8e8;
-  --bg-hover: #f0f0f0;
+  --bg-secondary: #f8f9fa;
+  --bg-tertiary: #eef0f2;
+  --bg-hover: #f0f1f3;
   --bg-selected: #dceff5;
-  --text-primary: #333333;
-  --text-secondary: #666666;
-  --text-muted: #999999;
-  --border-color: #e0e0e0;
+  --text-primary: #1a1a2e;
+  --text-secondary: #5a5a7a;
+  --text-muted: #9a9ab0;
+  --border-color: #e4e6eb;
+  --border-light: #f0f1f3;
   --accent: #469F95;
   --accent-hover: #3a8a81;
-  --accent-light: rgba(70, 159, 149, 0.1);
-  --danger: #c62828;
+  --accent-light: rgba(70, 159, 149, 0.12);
+  --accent-subtle: rgba(70, 159, 149, 0.06);
+  --danger: #d32f2f;
   --danger-hover: #b71c1c;
+  --danger-light: rgba(211, 47, 47, 0.08);
   --success: #2e7d32;
   --success-light: #4caf50;
   --warning: #f57f17;
   --warning-light: #ff9800;
-  --sidebar-bg: #2d323b;
-  --sidebar-text: #b8bcc3;
-  --sidebar-hover: #3a3f4a;
+  --sidebar-bg: #1e2230;
+  --sidebar-text: #8e93a8;
+  --sidebar-hover: #2a2f42;
   --sidebar-active: #469F95;
-  --sidebar-width: 260px;
-  --node-ephemeral: #ffab00;
-  --scrollbar-thumb: #c0c0c0;
-  --scrollbar-track: #f0f0f0;
-  --toast-bg: #333333;
+  --sidebar-width: 270px;
+  --node-ephemeral: #f9a825;
+  --scrollbar-thumb: #c8cad0;
+  --scrollbar-track: #f0f1f3;
+  --toast-bg: #2d2d3f;
   --toast-text: #ffffff;
-  --dialog-overlay: rgba(0,0,0,0.4);
+  --dialog-overlay: rgba(0,0,0,0.35);
   --input-bg: #ffffff;
-  --input-border: #d0d0d0;
+  --input-border: #d0d2da;
   --input-focus: #469F95;
   --card-bg: #ffffff;
-  --card-shadow: 0 1px 4px rgba(0,0,0,0.08);
-  --code-bg: #f8f9fa;
+  --card-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --card-shadow-hover: 0 4px 12px rgba(0,0,0,0.08);
+  --code-bg: #f6f8fa;
+  --header-bg: #ffffff;
+  --toolbar-bg: #f8f9fa;
 }
 
 /* ===== Dark Theme ===== */
 [data-theme="dark"] {
-  --bg-primary: #1e1e1e;
-  --bg-secondary: #252526;
-  --bg-tertiary: #333333;
-  --bg-hover: #2a2d2e;
+  --bg-primary: #1a1b23;
+  --bg-secondary: #21222c;
+  --bg-tertiary: #2a2b37;
+  --bg-hover: #2a2b37;
   --bg-selected: #1a3a4a;
-  --text-primary: #d4d4d4;
-  --text-secondary: #aaaaaa;
-  --text-muted: #666666;
-  --border-color: #3c3c3c;
+  --text-primary: #e2e4ea;
+  --text-secondary: #a0a3b2;
+  --text-muted: #6b6e80;
+  --border-color: #2e2f3e;
+  --border-light: #262736;
   --accent: #58B2A7;
   --accent-hover: #4a9e94;
-  --accent-light: rgba(88, 178, 167, 0.12);
+  --accent-light: rgba(88, 178, 167, 0.15);
+  --accent-subtle: rgba(88, 178, 167, 0.06);
   --danger: #ef5350;
   --danger-hover: #e53935;
+  --danger-light: rgba(239, 83, 80, 0.1);
   --success: #66bb6a;
   --success-light: #81c784;
   --warning: #ffa726;
   --warning-light: #ffb74d;
-  --sidebar-bg: #1a1a1e;
-  --sidebar-text: #8a8a8a;
-  --sidebar-hover: #2d2d32;
+  --sidebar-bg: #14151d;
+  --sidebar-text: #6b6e80;
+  --sidebar-hover: #1f212e;
   --sidebar-active: #58B2A7;
-  --node-ephemeral: #ffab00;
-  --scrollbar-thumb: #555555;
-  --scrollbar-track: #2d2d2d;
-  --toast-bg: #424242;
+  --node-ephemeral: #f9a825;
+  --scrollbar-thumb: #3a3b4a;
+  --scrollbar-track: #21222c;
+  --toast-bg: #2d2d3f;
   --toast-text: #ffffff;
-  --dialog-overlay: rgba(0,0,0,0.6);
-  --input-bg: #3c3c3c;
-  --input-border: #555555;
+  --dialog-overlay: rgba(0,0,0,0.55);
+  --input-bg: #2a2b37;
+  --input-border: #3a3b4a;
   --input-focus: #58B2A7;
-  --card-bg: #2d2d2d;
-  --card-shadow: 0 1px 4px rgba(0,0,0,0.2);
-  --code-bg: #1e1e1e;
+  --card-bg: #21222c;
+  --card-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  --card-shadow-hover: 0 4px 12px rgba(0,0,0,0.25);
+  --code-bg: #1a1b23;
+  --header-bg: #1a1b23;
+  --toolbar-bg: #21222c;
 }
 
 /* ===== Scrollbar ===== */
@@ -103,44 +116,38 @@ a:hover { text-decoration: underline; }
   font-size: 13px; font-weight: 500; cursor: pointer;
   transition: all 0.15s ease;
   background: var(--bg-primary); color: var(--text-primary);
-  gap: 4px; white-space: nowrap;
+  gap: 5px; white-space: nowrap; user-select: none; line-height: 1.4;
 }
 .btn:hover { background: var(--bg-hover); border-color: var(--text-muted); }
+.btn:active { transform: translateY(1px); }
 .btn-primary {
   background: var(--accent); color: #fff; border-color: var(--accent);
 }
 .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
-.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .btn-danger { background: var(--danger); color: #fff; border-color: var(--danger); }
 .btn-danger:hover { background: var(--danger-hover); }
-.btn-small { padding: 3px 10px; font-size: 12px; border-radius: 4px; }
-.btn-ghost { border: none; background: transparent; color: var(--text-secondary); }
+.btn-small { padding: 3px 10px; font-size: 12px; border-radius: 5px; }
+.btn-ghost { border-color: transparent; background: transparent; color: var(--text-secondary); }
 .btn-ghost:hover { background: var(--bg-hover); color: var(--text-primary); }
-.btn-icon {
-  width: 28px; height: 28px; padding: 0;
-  border: none; background: transparent; color: var(--text-secondary);
-  border-radius: 4px; cursor: pointer; display: inline-flex;
-  align-items: center; justify-content: center; font-size: 16px;
-}
-.btn-icon:hover { background: var(--bg-hover); color: var(--text-primary); }
 
 /* ===== Form ===== */
-.form-group { margin-bottom: 14px; }
+.form-group { margin-bottom: 16px; }
 .form-group label {
   display: block; margin-bottom: 5px;
   font-size: 12px; font-weight: 600; color: var(--text-secondary);
-  text-transform: uppercase; letter-spacing: 0.3px;
+  letter-spacing: 0.2px;
 }
 .form-group input, .form-group select, .form-group textarea {
-  width: 100%; padding: 8px 10px;
+  width: 100%; padding: 8px 12px;
   border: 1px solid var(--input-border); border-radius: 6px;
   background: var(--input-bg); color: var(--text-primary);
-  font-size: 13px; outline: none; transition: border-color 0.2s;
+  font-size: 13px; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
 }
 .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-  border-color: var(--input-focus); box-shadow: 0 0 0 2px var(--accent-light);
+  border-color: var(--input-focus); box-shadow: 0 0 0 3px var(--accent-light);
 }
-.form-group textarea { min-height: 70px; resize: vertical; font-family: 'SF Mono', Monaco, Consolas, monospace; font-size: 12px; }
+.form-group textarea { min-height: 70px; resize: vertical; font-family: 'SF Mono', Monaco, Consolas, monospace; font-size: 12px; line-height: 1.5; }
 .form-group.inline { display: flex; gap: 10px; align-items: center; }
 .form-row { display: flex; gap: 12px; }
 .form-row .form-group { flex: 1; }
@@ -154,11 +161,11 @@ a:hover { text-decoration: underline; }
 .toggle-switch input { opacity: 0; width: 0; height: 0; }
 .toggle-slider {
   position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-  background: var(--text-muted); border-radius: 20px; transition: 0.3s;
+  background: var(--text-muted); border-radius: 20px; transition: 0.25s;
 }
 .toggle-slider:before {
   content: ""; position: absolute; height: 16px; width: 16px;
-  left: 2px; bottom: 2px; background: white; border-radius: 50%; transition: 0.3s;
+  left: 2px; bottom: 2px; background: #fff; border-radius: 50%; transition: 0.25s;
 }
 .toggle-switch input:checked + .toggle-slider { background: var(--accent); }
 .toggle-switch input:checked + .toggle-slider:before { transform: translateX(16px); }
