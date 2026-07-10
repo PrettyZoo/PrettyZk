@@ -48,9 +48,10 @@ subprojects {
         jfoenixVersion = '9.0.10'
         richtextfxVersion = '0.11.0'
         sshjVersion = '0.34.0'
+        javalinVersion = '6.4.0'
         antlr4RuntimeVersion = '4.9.2'
         commonsIoVersion = '2.10.0'
-        lombokVersion = '1.18.22'
+        lombokVersion = '1.18.34'
         mapStructVersion = '1.5.3.Final'
     }
 
@@ -67,6 +68,7 @@ subprojects {
             implementation group: 'org.fxmisc.richtext', name: 'richtextfx', version: "${richtextfxVersion}"
             implementation group: 'com.jfoenix', name: 'jfoenix', version: "${jfoenixVersion}"
             implementation "com.google.guava:guava:${guavaVersio}"
+            implementation "io.javalin:javalin:${javalinVersion}"
             implementation group: 'org.antlr', name: 'antlr4-runtime', version: "${antlr4RuntimeVersion}"
             implementation('org.slf4j:slf4j-api:2.0.6') {
                 force = true

@@ -1,53 +1,25 @@
 plugins {
-    id 'org.openjfx.javafxplugin' version '0.0.11'
     id 'org.beryx.jlink' version '2.26.0'
-    id 'antlr'
     id 'idea'
     id 'application'
 }
 
 checkstyleMain.source = "src/main/java"
 
-javafx {
-    version = "18.0.2"
-    modules = ['javafx.controls', 'javafx.fxml', 'javafx.graphics', 'javafx.base']
-}
-
 mainClassName = "cc.cc1234.Application"
 
-def runArgsValue = [
-        "-XX:+UnlockExperimentalVMOptions",
-        // required due to a bug in Java: https://github.com/javafxports/openjdk-jfx/issues/175
-        "-Djdk.gtk.version=2",
-        "-Dfile.encoding=utf-8",
-        "--add-exports=javafx.controls/com.sun.javafx.scene.control.behavior=com.jfoenix",
-        "--add-exports=javafx.base/com.sun.javafx.binding=com.jfoenix",
-        "--add-exports=javafx.base/com.sun.javafx.event=com.jfoenix",
-        "--add-exports=javafx.graphics/com.sun.javafx.stage=com.jfoenix",
-        "--add-exports=javafx.graphics/com.sun.javafx.scene=com.jfoenix",
-        "--add-exports=javafx.graphics/com.sun.javafx.geom=com.jfoenix",
-        "--add-exports=javafx.graphics/com.sun.javafx.scene.text=com.jfoenix",
-        "--add-exports=javafx.controls/com.sun.javafx.scene.control.inputmap=com.jfoenix",
-        "--add-exports=javafx.graphics/com.sun.javafx.scene.traversal=com.jfoenix",
-        "--add-exports=javafx.controls/com.sun.javafx.scene.control=com.jfoenix",
-        "--add-exports=javafx.graphics/com.sun.javafx.util=com.jfoenix",
-        "--add-exports=javafx.graphics/com.sun.javafx.util=com.jfoenix",
-        "--add-opens=java.base/java.lang.reflect=com.jfoenix"
-]
-
 run {
-    jvmArgs = runArgsValue
+    jvmArgs = ["-Dfile.encoding=utf-8"]
 }
 
-applicationDefaultJvmArgs = runArgsValue
+applicationDefaultJvmArgs = ["-Dfile.encoding=utf-8"]
 
 jlink {
     options = ['--strip-debug', '--compress', '2', '--no-header-files', '--no-man-pages']
-    addExtraDependencies("javafx")
     forceMerge("jackson", "log4j-api")
     launcher {
         name = 'prettyZoo'
-        jvmArgs = runArgsValue
+        jvmArgs = ["-Dfile.encoding=utf-8"]
     }
     jpackage {
         def os = org.gradle.internal.os.OperatingSystem.current()
@@ -123,62 +95,8 @@ task releaseJarZip(dependsOn: distZip) {
 dependencies {
     api project(':core')
     api project(':specification')
-    antlr "org.antlr:antlr4:4.9" // use ANTLR version 4
 
     implementation 'com.google.guava:guava'
-    implementation('org.fxmisc.richtext:richtextfx') {
-        exclude group: 'org.openjfx'
-    }
-    implementation 'org.antlr:antlr4-runtime'
-    implementation 'com.jfoenix:jfoenix'
+    implementation 'io.javalin:javalin'
     implementation 'commons-io:commons-io'
 }
-
-configJavafxRun {
-    dependsOn classes
-}
-
-task updateVersion {
-    def versionFileDir = projectDir.getAbsolutePath() + '/src/main/java/cc/cc1234/version/Version.java'
-    def oldVersionStr = findOldVersionStr(versionFileDir)
-    def newVersionValue = version.toString().split("-")[0]
-    def newVersionStr = "    public static final String VERSION = \"" + newVersionValue + "\";"
-    //旧版本和新版本不一样, 进行替换
-    if (oldVersionStr.toString().trim() != newVersionStr.trim()) {
-        def updatedContent = new File(versionFileDir).getText('UTF-8').replaceAll(oldVersionStr, newVersionStr)
-        new File(versionFileDir).write(updatedContent, 'UTF-8')
-    }
-}
-
-def findOldVersionStr(path) {
-    def readerString = ""
-    new File(path).withReader('UTF-8') { reader ->
-        reader.eachLine {
-            //读取一行，如果发现有"VERSION"字符，说明是我们要修改的那一行。
-            if (it.contains("VERSION")) {
-                //保存it到string，然后返回
-                readerString <<= it
-                return readerString
-            }
-        }
-        return readerString
-    }
-}
-
-compileJava {
-    dependsOn updateVersion
-}
-
-sourceSets {
-    main {
-        java.srcDirs += 'gen/main/java'
-        resources.srcDirs += 'gen/main/resources'
-    }
-}
-
-//generateGrammarSource {
-//    source("src/main/resources/grammars/properties.g4")
-//    outputDirectory = file("gen/main/java/cc/cc1234/antlr4/properties")
-//    arguments += ["-visitor",
-//                  "-long-messages"]
-//}

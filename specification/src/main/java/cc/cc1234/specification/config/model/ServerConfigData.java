@@ -32,4 +32,12 @@ public class ServerConfigData {
 
     private ConnectionConfigData connectionConfig = new ConnectionConfigData();
 
+    /**
+     * ZooKeeper client version for compatibility:
+     * - "auto" (default): Curator 5.x
+     * - "3.4": Native ZooKeeper 3.4.x compatible
+     * - "3.5": Curator 5.x with backward-compatible settings
+     */
+    private String zkVersion = "auto";
+
 }

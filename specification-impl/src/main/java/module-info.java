@@ -12,5 +12,6 @@ open module specificationImpl.main {
 
     exports cc.cc1234.client.curator;
     exports cc.cc1234.config;
+    exports cc.cc1234.zknative;
     exports cc.cc1234.zookeeper;
 }

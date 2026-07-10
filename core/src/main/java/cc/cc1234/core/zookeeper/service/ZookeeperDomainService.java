@@ -8,6 +8,7 @@ import cc.cc1234.core.zookeeper.factory.ZookeeperFactory;
 import cc.cc1234.specification.listener.ServerListener;
 import cc.cc1234.specification.listener.ZookeeperNodeListener;
 import cc.cc1234.specification.node.NodeMode;
+import cc.cc1234.specification.node.ZkNode;
 import cc.cc1234.specification.util.StringWriter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.zookeeper.data.Stat;
@@ -45,6 +46,42 @@ public class ZookeeperDomainService {
         zookeeperMap.clear();
     }
 
+    /**
+     * List children of a given path.
+     */
+    public List<String> getChildren(String serverId, String path) {
+        assertZookeeperExists(serverId);
+        try {
+            return zookeeperMap.get(serverId).getChildren(path);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to get children at " + path, e);
+        }
+    }
+
+    /**
+     * Get node data and stat for a given path.
+     */
+    public ZkNode getNode(String serverId, String path) {
+        assertZookeeperExists(serverId);
+        try {
+            return zookeeperMap.get(serverId).getNode(path);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to get node at " + path, e);
+        }
+    }
+
+    /**
+     * Search nodes by keyword.
+     */
+    public List<ZkNode> search(String serverId, String keyword) {
+        assertZookeeperExists(serverId);
+        try {
+            return zookeeperMap.get(serverId).search(keyword);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to search for " + keyword, e);
+        }
+    }
+
     public void sync(String serverId) {
         assertZookeeperExists(serverId);
         zookeeperMap.get(serverId).sync();
@@ -58,6 +95,13 @@ public class ZookeeperDomainService {
             log.error("set data error " + serverId + " -> " + path, e);
             throw new IllegalStateException(e);
         }
+    }
+
+    /**
+     * Set node data without exposing ZooKeeper Stat type (for client modules without ZooKeeper dependency).
+     */
+    public void setData(String serverId, String path, String data) {
+        set(serverId, path, data);
     }
 
     public void delete(String serverId, List<String> pathList) throws Exception {

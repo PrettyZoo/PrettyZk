@@ -5,3 +5,4 @@
 **/classes/**
 **/out/**
 lombok.config
+node_modules

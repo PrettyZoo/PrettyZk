@@ -1,11 +1,15 @@
 package cc.cc1234.specification.node;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.apache.zookeeper.data.Stat;
 
 @Data
+@Builder
 @NoArgsConstructor
+@AllArgsConstructor
 public class ZkNode {
 
     /**

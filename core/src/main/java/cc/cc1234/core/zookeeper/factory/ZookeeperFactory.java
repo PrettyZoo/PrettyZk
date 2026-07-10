@@ -1,11 +1,13 @@
 package cc.cc1234.core.zookeeper.factory;
 
 import cc.cc1234.client.curator.CuratorZookeeperConnectionFactory;
+import cc.cc1234.zknative.NativeZookeeperConnection;
 import cc.cc1234.core.configuration.entity.ServerConfiguration;
 import cc.cc1234.core.configuration.value.SSHTunnelConfiguration;
 import cc.cc1234.core.zookeeper.entity.SSHTunnel;
 import cc.cc1234.core.zookeeper.entity.Terminal;
 import cc.cc1234.core.zookeeper.entity.Zookeeper;
+import cc.cc1234.specification.connection.ZookeeperConnection;
 import cc.cc1234.specification.connection.ZookeeperParams;
 import cc.cc1234.specification.listener.ServerListener;
 import cc.cc1234.specification.listener.ZookeeperNodeListener;
@@ -34,7 +36,8 @@ public class ZookeeperFactory {
                     .remotePort(tunnelConfig.getRemotePort())
                     .build();
         }
-        var factory = new CuratorZookeeperConnectionFactory();
+
+        String zkVersion = serverConfig.getZkVersion() != null ? serverConfig.getZkVersion() : "auto";
         var params = ZookeeperParams.builder()
                 .id(serverConfig.getId())
                 .url(serverConfig.getConnectionTo())
@@ -44,12 +47,34 @@ public class ZookeeperFactory {
                 .retryIntervalTime(serverConfig.getConnectionConfiguration().getRetryIntervalTime())
                 .sessionTimeout(serverConfig.getConnectionConfiguration().getSessionTimeout())
                 .build();
-        return new Zookeeper(serverConfig.getId(),
+
+        // Choose connection implementation based on ZK version
+        return new Zookeeper(
+                serverConfig.getId(),
                 serverConfig.getConnectionTo(),
-                () -> factory.createAsync(params, serverListeners),
+                () -> createConnection(zkVersion, params, serverListeners, serverConfig),
                 tunnel,
                 nodeListeners,
-                serverListeners);
+                serverListeners
+        );
+    }
+
+    private ZookeeperConnection createConnection(String zkVersion, ZookeeperParams params,
+                                                  List<ServerListener> serverListeners,
+                                                  ServerConfiguration serverConfig) {
+        return switch (zkVersion) {
+            case "3.4" -> new NativeZookeeperConnection(
+                    params.getId(),
+                    params.getUrl(),
+                    params.getSessionTimeout(),
+                    params.getConnectionTimeout()
+            );
+            default -> {
+                // "auto", "3.5", "3.6+" all use Curator 5.x by default
+                var factory = new CuratorZookeeperConnectionFactory();
+                yield factory.createAsync(params, serverListeners);
+            }
+        };
     }
 
     public Terminal createTerminal(String id, String url, StringWriter writer) throws Exception {

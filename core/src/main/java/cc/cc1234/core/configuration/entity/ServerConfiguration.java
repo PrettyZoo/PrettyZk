@@ -35,6 +35,9 @@ public class ServerConfiguration {
     @Builder.Default
     private ConnectionConfiguration connectionConfiguration = new ConnectionConfiguration();
 
+    @Builder.Default
+    private String zkVersion = "auto";
+
     public void update(ServerConfiguration update) {
         if (update.getSshTunnelEnabled() && update.getSshTunnel() == null) {
             throw new IllegalStateException();
@@ -46,6 +49,7 @@ public class ServerConfiguration {
         this.sshTunnel = update.getSshTunnel();
         this.alias = update.getAlias();
         this.enableConnectionAdvanceConfiguration = update.getEnableConnectionAdvanceConfiguration();
+        this.zkVersion = update.getZkVersion() != null ? update.getZkVersion() : "auto";
         // advance config
         ConnectionConfiguration connectionConfig = update.getConnectionConfiguration();
         this.connectionConfiguration.setConnectionTimeout(connectionConfig.getConnectionTimeout());
@@ -69,7 +73,9 @@ public class ServerConfiguration {
     }
 
     public String getConnectionTo() {
-        // TODO if ssh enabled, use localhost && random port
+        if (sshTunnelEnabled && sshTunnel != null) {
+            return "127.0.0.1:" + port;
+        }
         return host + ":" + port;
     }
 }
