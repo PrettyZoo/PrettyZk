@@ -32,66 +32,42 @@ fn download_jre() -> bool { true } // Bundled in .app on macOS
 #[cfg(target_os = "windows")]
 fn download_jre() -> bool {
     let res = resource_dir();
-    let url = "https://github.com/PrettyZoo/PrettyZk/releases/download/v3.0.0/jre.zip";
-    let zip_path = res.join("jre.zip");
+    let jre_dir = res.join("runtime");
+    let tmp = res.join("__jre_tmp");
+    let _ = std::fs::create_dir_all(&tmp);
 
-    eprintln!("Downloading JRE from {}...", url);
+    // Download from Adoptium API (official Eclipse Temurin builds)
+    let url = "https://api.adoptium.net/v3/binary/latest/17/ga/windows/x64/jre/hotspot/normal/eclipse";
+    let zip_path = tmp.join("jre.zip");
+    let java_exe = jre_dir.join("bin").join("java.exe");
 
-    // Download with PowerShell
-    let dl = format!(
+    // Skip if already downloaded
+    if java_exe.exists() { return true; }
+
+    eprintln!("Downloading Java 17 JRE (Eclipse Temurin)...");
+
+    let script = format!(
         "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; \
-        Invoke-WebRequest -Uri '{}' -OutFile '{}' -UseBasicParsing",
-        url, zip_path.to_str().unwrap()
+        $p='{}'; mkdir $p -Force; \
+        Invoke-WebRequest '{}' -OutFile '$p\\jre.zip' -UseBasicParsing; \
+        Expand-Archive '$p\\jre.zip' '$p\\extracted' -Force; \
+        $d=Get-ChildItem '$p\\extracted' -Directory | Select-Object -First 1; \
+        if($d){{Move-Item $d.FullName '{}' -Force}}",
+        tmp.to_str().unwrap(), url, jre_dir.to_str().unwrap()
     );
 
     let status = Command::new("powershell")
-        .args(["-NoProfile", "-Command", &dl])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .status()
-        .unwrap_or_default();
+        .args(["-NoProfile", "-Command", &script])
+        .stdout(Stdio::null()).stderr(Stdio::null())
+        .status().unwrap_or_default();
 
-    if !status.success() {
-        eprintln!("Download failed (exit: {:?})", status.code());
-        return false;
-    }
+    let _ = std::fs::remove_dir_all(&tmp);
 
-    if !zip_path.exists() {
-        eprintln!("Downloaded file not found");
-        return false;
-    }
-
-    // Extract
-    let extract = format!(
-        "Expand-Archive -Path '{}' -DestinationPath '{}' -Force",
-        zip_path.to_str().unwrap(),
-        res.to_str().unwrap()
-    );
-
-    let status2 = Command::new("powershell")
-        .args(["-NoProfile", "-Command", &extract])
-        .status()
-        .unwrap_or_default();
-
-    let _ = std::fs::remove_file(&zip_path);
-
-    if !status2.success() {
-        eprintln!("Extract failed (exit: {:?})", status2.code());
-        return false;
-    }
-
-    let java = res.join("jre").join("runtime").join("bin").join("java.exe");
-    if java.exists() {
-        // Move jre/jre/* to jre/* (handle nested dir)
-        let inner = res.join("jre").join("runtime");
-        if inner.exists() {
-            let _ = std::fs::rename(&inner, &res.join("runtime"));
-            let _ = std::fs::remove_dir_all(res.join("jre"));
-        }
-        eprintln!("JRE installed successfully");
+    if java_exe.exists() {
+        eprintln!("JRE installed: {}", jre_dir.display());
         true
     } else {
-        eprintln!("JRE binary not found after extraction");
+        eprintln!("JRE download failed. Install Java 17 from https://adoptium.net/");
         false
     }
 }
