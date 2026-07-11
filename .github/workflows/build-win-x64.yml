@@ -16,16 +16,20 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+
       - uses: dtolnay/rust-toolchain@stable
+
       - run: npm install -g @tauri-apps/cli@latest
-      - run: choco install wixtoolset -y --no-progress
+      - run: choco install wixtoolset nsis -y --no-progress
 
       - uses: actions/cache@v4
         with:
@@ -40,12 +44,69 @@ jobs:
       - run: cd webapp && npm install && npm run build
       - run: ./gradlew :app:installDist --no-daemon -x test
 
-      - name: Tauri build
+      - name: JRE
+        run: |
+          "$JAVA_HOME/bin/jlink" --module-path "$JAVA_HOME/jmods" \
+            --add-modules java.base,java.desktop,java.logging,java.naming,java.management,java.instrument,java.security.jgss,java.net.http,java.scripting,java.xml,jdk.unsupported \
+            --no-header-files --no-man-pages --output build/jlink-runtime
+          rm -rf build/jlink-runtime/legal
+
+      - name: Build MSI
         run: cd src-tauri && npx tauri build
+
+      - name: Build combined EXE installer
+        shell: pwsh
+        run: |
+          # Find the MSI
+          $msi = Get-ChildItem src-tauri/target/release/bundle/msi/*.msi | Select-Object -First 1
+          if (-not $msi) { throw "MSI not found" }
+
+          # Create staging directory
+          New-Item -ItemType Directory -Force -Path dist/stage
+          Copy-Item $msi.FullName dist/stage/app.msi
+
+          # Add JRE and backend jars
+          Copy-Item build/jlink-runtime dist/stage/runtime -Recurse -Force
+          New-Item -ItemType Directory -Force -Path dist/stage/app/lib
+          Copy-Item app/build/install/app/lib/*.jar dist/stage/app/lib/
+
+          # Write NSIS script
+          @"
+Unicode True
+!include "MUI2.nsh"
+Name "PrettyZk 3.0.0"
+OutFile "PrettyZk-Setup.exe"
+RequestExecutionLevel admin
+InstallDir "$PROGRAMFILES64\PrettyZk"
+
+Section "Install"
+  SetOutPath "`$INSTDIR"
+  File /r "stage\*.*"
+  ExecWait 'msiexec /i "`$INSTDIR\app.msi" /qn'
+  Delete "`$INSTDIR\app.msi"
+  WriteUninstaller "`$INSTDIR\uninstall.exe"
+SectionEnd
+
+Section "uninstall"
+  RMDir /r "`$INSTDIR"
+SectionEnd
+"@ | Out-File -FilePath dist/installer.nsi -Encoding ASCII
+
+          # Compile
+          & "C:\Program Files (x86)\NSIS\makensis.exe" /V1 dist/installer.nsi
+          if (Test-Path "dist/PrettyZk-Setup.exe") {
+            Copy-Item dist/PrettyZk-Setup.exe $env:GITHUB_WORKSPACE/
+          } else {
+            # Try alternative NSIS path
+            & "C:\Program Files\NSIS\makensis.exe" /V1 dist/installer.nsi
+            Copy-Item dist/PrettyZk-Setup.exe $env:GITHUB_WORKSPACE/
+          }
 
       - uses: softprops/action-gh-release@v2
         with:
-          files: src-tauri/target/release/bundle/msi/PrettyZk_*.msi
+          files: |
+            PrettyZk-Setup.exe
+            src-tauri/target/release/bundle/msi/PrettyZk_*.msi
           tag_name: ${{ github.ref_name }}
           draft: true
           fail_on_unmatched_files: false
