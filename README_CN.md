@@ -83,16 +83,17 @@ cargo tauri build
 
 ## 🔄 与 PrettyZoo 的关系
 
-PrettyZk 是对 [PrettyZoo](https://github.com/PrettyZoo/PrettyZk)（vran-dev）的完整重写，原项目已归档。
+PrettyZk 是基于 [PrettyZoo](https://github.com/PrettyZoo/PrettyZk)（vran-dev）的 UI 现代化改造，将 JavaFX 前端替换为 Vue 3 + Tauri，核心 ZK 领域逻辑保持不变。
 
 | | PrettyZoo（原版） | PrettyZk |
 |---|---|---|
-| UI | JavaFX + FXML + JFoenix | Vue 3 + TypeScript + CSS |
+| 前端 | JavaFX + FXML + JFoenix | Vue 3 + TypeScript + Vite |
 | 桌面壳 | JavaFX Stage | Tauri WebView |
 | 代码编辑器 | RichTextFX | CodeMirror 6 |
 | 终端 | JavaFX TextArea | xterm.js |
-| 主题 | 单独 CSS 文件 | CSS 变量 |
+| 主题 | CSS 文件切换 | CSS 变量 |
 | 国际化 | Java ResourceBundle | Vue 响应式 i18n |
+| 后端 (core/spec) | 相同 ✅ | 相同 ✅ |
 
 ## 📄 开源协议
 

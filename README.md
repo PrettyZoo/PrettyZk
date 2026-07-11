@@ -83,16 +83,17 @@ cargo tauri build
 
 ## 🔄 Relationship to PrettyZoo
 
-PrettyZk is a complete rewrite of [PrettyZoo](https://github.com/PrettyZoo/PrettyZk) (by vran-dev), which is now archived.
+PrettyZk is a UI modernization of [PrettyZoo](https://github.com/PrettyZoo/PrettyZk) (by vran-dev), replacing the JavaFX frontend with Vue 3 + Tauri while keeping the core ZK domain logic intact.
 
 | | PrettyZoo (original) | PrettyZk |
 |---|---|---|
-| UI | JavaFX + FXML + JFoenix | Vue 3 + TypeScript + CSS |
-| Desktop | JavaFX Stage | Tauri WebView |
+| Frontend | JavaFX + FXML + JFoenix | Vue 3 + TypeScript + Vite |
+| Desktop Shell | JavaFX Stage | Tauri WebView |
 | Code Editor | RichTextFX | CodeMirror 6 |
 | Terminal | JavaFX TextArea | xterm.js |
-| Theme | Separate CSS files | CSS variables |
+| Theme | CSS file swap | CSS variables |
 | i18n | Java ResourceBundle | Vue reactive i18n |
+| Backend (core/spec) | Same ✅ | Same ✅ |
 
 ## 📄 License
 
