@@ -2,7 +2,7 @@
   <nav class="sidebar">
     <div class="sidebar-header">
       <span class="logo">🦓</span>
-      <span class="brand">PrettyZoo</span>
+      <span class="brand">PrettyZk</span>
     </div>
 
     <div class="sidebar-toolbar">

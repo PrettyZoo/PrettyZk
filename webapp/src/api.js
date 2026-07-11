@@ -1,4 +1,4 @@
-// PrettyZoo API client
+// PrettyZk API client
 
 const API_BASE = ''
 

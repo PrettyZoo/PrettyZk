@@ -26,7 +26,7 @@ public class ConfigApi {
     public void getVersion(Context ctx) {
         ctx.json(Map.of(
                 "version", Version.VERSION,
-                "name", "PrettyZoo"
+                "name", "PrettyZk"
         ));
     }
 

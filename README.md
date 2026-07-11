@@ -3,11 +3,11 @@
 </p>
 
 
-![release-version](https://img.shields.io/github/v/release/vran-dev/prettyZoo?include_prereleases&style=for-the-badge) ![downloads](https://img.shields.io/github/downloads/vran-dev/PrettyZoo/total?style=for-the-badge) ![language](https://img.shields.io/github/languages/top/vran-dev/PrettyZoo?style=for-the-badge) ![licence](https://img.shields.io/github/license/vran-dev/PrettyZoo?style=for-the-badge) ![stars](https://img.shields.io/github/stars/vran-dev/PrettyZoo?style=for-the-badge)
+![release-version](https://img.shields.io/github/v/release/vran-dev/prettyZoo?include_prereleases&style=for-the-badge) ![downloads](https://img.shields.io/github/downloads/vran-dev/PrettyZk/total?style=for-the-badge) ![language](https://img.shields.io/github/languages/top/vran-dev/PrettyZk?style=for-the-badge) ![licence](https://img.shields.io/github/license/vran-dev/PrettyZk?style=for-the-badge) ![stars](https://img.shields.io/github/stars/vran-dev/PrettyZk?style=for-the-badge)
 
 #  Announce
 
-Hello PrettyZoo users.
+Hello PrettyZk users.
 
 Since the first version was released on September 30, 2019, almost 4 years have passed. I would like to take this opportunity to express my deepest gratitude to each and every one of you users for being with and supporting this project throughout this time.
 
@@ -28,18 +28,18 @@ English |  [中文](README_CN.md)
 
 # What
 
-[PrettyZoo](https://github.com/vran-dev/PrettyZoo) is a GUI for [Zookeeper](https://zookeeper.apache.org/) created by
+[PrettyZk](https://github.com/vran-dev/PrettyZk) is a GUI for [Zookeeper](https://zookeeper.apache.org/) created by
 JavaFX and Apache Curator Framework.
 
-You can download and install at [Release](https://github.com/vran-dev/PrettyZoo/releases), support
+You can download and install at [Release](https://github.com/vran-dev/PrettyZk/releases), support
 
 - Windows (msi)
 - Mac (dmg)
 - Linux (rpm & deb)
 
-## If you see PrettyZoo is damaged  in Mac
+## If you see PrettyZk is damaged  in Mac
 
-you can see the solution in [issue-219](https://github.com/vran-dev/PrettyZoo/issues/219)
+you can see the solution in [issue-219](https://github.com/vran-dev/PrettyZk/issues/219)
 
 1. run the follow command
 
@@ -88,7 +88,7 @@ xattr -rc /Applications/prettyZoo.app
 
 ## Build
 
-See wiki: [build yourself](https://github.com/vran-dev/PrettyZoo/wiki/build-yourself)
+See wiki: [build yourself](https://github.com/vran-dev/PrettyZk/wiki/build-yourself)
 
 # Sponsor
 
@@ -106,9 +106,9 @@ By wechat sponsor code
 
 ## Thanks
 
-- [ZooKeeper GUI 客户端](http://vip.iocoder.cn/Zookeeper/PrettyZoo/)  by 「芋道源码」
+- [ZooKeeper GUI 客户端](http://vip.iocoder.cn/Zookeeper/PrettyZk/)  by 「芋道源码」
 
-- [PrettyZoo, 颜值与功能双在线的 Zookeeper 可视化工具](https://mp.weixin.qq.com/s/TkFirILto_moEv_kjBBPFw)
+- [PrettyZk, 颜值与功能双在线的 Zookeeper 可视化工具](https://mp.weixin.qq.com/s/TkFirILto_moEv_kjBBPFw)
 
 # Supported by
 
