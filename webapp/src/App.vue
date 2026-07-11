@@ -14,6 +14,7 @@
       @toggle-theme="onToggleTheme"
       @toggle-lang="onToggleLang"
       @update:font-size="onFontSizeChange"
+      @config-export="onConfigExport"
     />
     <!-- Main Content -->
     <main class="main-content">
@@ -133,6 +134,20 @@ function onServerSaved(id) {
   activeServerId.value = id
   currentView.value = 'node-browser'
   api.listServers().then(s => state.servers = s || []).catch(e => console.warn(e))
+}
+
+async function onConfigExport() {
+  try {
+    const data = await api.exportConfig()
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = 'prettyzk-config.json'; a.click()
+    URL.revokeObjectURL(url)
+    window.__toast?.('Config exported', 'success')
+  } catch (e) {
+    window.__toast?.('Export failed: ' + e.message, 'error')
+  }
 }
 
 function onFontSizeChange(val) {

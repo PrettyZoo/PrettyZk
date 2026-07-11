@@ -41,6 +41,8 @@
     </div>
 
     <div class="sidebar-footer">
+      <button class="footer-btn" @click="$emit('config-export')" title="Export Config">📤</button>
+      <button class="footer-btn" @click="onImportConfig" title="Import Config">📥</button>
       <button class="footer-btn" @click="$emit('logs')" title="Logs">📋 {{ t('sidebar.logs') }}</button>
       <button class="footer-btn" @click="$emit('toggle-lang')" title="Switch Language">{{ locale === 'zh' ? 'English' : '中文' }}</button>
       <button class="footer-btn" @click="showFontSlider = !showFontSlider" title="Font Size">🔤</button>
@@ -65,9 +67,27 @@ const props = defineProps({
   locale: { type: String, default: 'en' },
   fontSize: { type: Number, default: 14 },
 })
-const emit = defineEmits(['select', 'add', 'edit', 'delete', 'logs', 'toggle-theme', 'toggle-lang', 'update:fontSize'])
+const emit = defineEmits(['select', 'add', 'edit', 'delete', 'logs', 'toggle-theme', 'toggle-lang', 'update:fontSize', 'config-export'])
 
 const showFontSlider = ref(false)
+
+async function onImportConfig() {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.json'
+  input.onchange = async () => {
+    const file = input.files?.[0]
+    if (!file) return
+    try {
+      const text = await file.text()
+      await api.importConfig(text)
+      window.__toast?.('Config imported, please restart', 'success')
+    } catch (e) {
+      window.__toast?.('Import failed: ' + e.message, 'error')
+    }
+  }
+  input.click()
+}
 
 function onFontChange(e) {
   const val = parseInt(e.target.value)
