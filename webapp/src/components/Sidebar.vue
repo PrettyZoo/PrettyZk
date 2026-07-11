@@ -41,8 +41,8 @@
     </div>
 
     <div class="sidebar-footer">
-      <button class="footer-btn" @click="$emit('config-export')" title="Export Config">📤</button>
-      <button class="footer-btn" @click="onImportConfig" title="Import Config">📥</button>
+      <button class="footer-btn" @click="$emit('config-export')" title="Export Config">Exp</button>
+      <button class="footer-btn" @click="onImportConfig" title="Import Config">Imp</button>
       <button class="footer-btn" @click="$emit('logs')" title="Logs">📋 {{ t('sidebar.logs') }}</button>
       <button class="footer-btn" @click="$emit('toggle-lang')" title="Switch Language">{{ locale === 'zh' ? 'English' : '中文' }}</button>
       <button class="footer-btn" @click="showFontSlider = !showFontSlider" title="Font Size">🔤</button>
