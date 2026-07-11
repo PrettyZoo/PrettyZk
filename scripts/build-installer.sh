@@ -1,106 +1,76 @@
 #!/bin/bash
-# PrettyZk - Build self-contained installer
+# PrettyZk - Build self-contained installer (macOS)
 set -e
 export PATH="$HOME/.cargo/bin:$PATH"
 cd "$(dirname "$0")/.."
-echo "=== PrettyZk Installer Build ==="
 
-# 1. Build backend
-echo "[1/5] Building backend..."
-./gradlew :app:installDist -q
+echo "=== PrettyZk v3.0.0 Installer Build ==="
 
-# 2. Build frontend
-echo "[2/5] Building frontend..."
+echo "[1/6] Building frontend..."
 cd webapp && npm install --silent && npm run build --silent && cd ..
 
-# 3. Create minimal JRE with jlink
-echo "[3/5] Creating minimal JRE..."
-JLINK_BASE="build/jlink-runtime"
-rm -rf "$JLINK_BASE"
+echo "[2/6] Building backend..."
+./gradlew :app:installDist -q
 
-# Get the module path from current JDK
-MODULE_PATH="$JAVA_HOME/jmods"
+echo "[3/6] Creating minimal JRE..."
+rm -rf build/jlink-runtime
+jlink --module-path "$JAVA_HOME/jmods" \
+  --add-modules java.base,java.desktop,java.logging,java.naming,java.management,java.instrument,java.security.jgss,java.net.http,java.scripting,java.xml,jdk.unsupported,jdk.security.auth \
+  --strip-debug --no-header-files --no-man-pages \
+  --output build/jlink-runtime
+rm -rf build/jlink-runtime/legal
+echo "  JRE: $(du -sh build/jlink-runtime | cut -f1)"
 
-# Required JDK modules for our app
-ALL_MODS="java.base,java.logging,java.naming,java.management,java.instrument,java.security.jgss,java.net.http,java.scripting,java.xml,jdk.unsupported"
-
-echo "  Modules: $ALL_MODS"
-
-# Create runtime image
-jlink --module-path "$MODULE_PATH" \
-  --add-modules "$ALL_MODS" \
-  --strip-debug --compress 2 --no-header-files --no-man-pages \
-  --output "$JLINK_BASE"
-
-echo "  JRE size: $(du -sh "$JLINK_BASE" | cut -f1)"
-
-# 4. Bundle into .app
-echo "[4/5] Bundling installer..."
-APP="src-tauri/target/release/bundle/macos/PrettyZk.app"
-rm -rf "$APP" 2>/dev/null
-
-# Build Tauri binary first
+echo "[4/6] Building Tauri..."
 cd src-tauri && cargo build --release --quiet && cd ..
 
-# Create .app structure manually (faster than tauri build)
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/app/lib" \
-  "$APP/Contents/Resources/runtime" "$APP/Contents/Resources/icons"
+echo "[5/6] Bundling .app..."
+APP="src-tauri/target/release/bundle/macos/PrettyZk.app"
+mkdir -p "$APP/Contents/Resources/runtime" "$APP/Contents/Resources/app/lib"
+cp -R build/jlink-runtime/* "$APP/Contents/Resources/runtime/"
+cp app/build/install/app/lib/*.jar "$APP/Contents/Resources/app/lib/"
 
-# Copy binary
-cp "src-tauri/target/release/prettyzoo" "$APP/Contents/MacOS/"
-
-# Copy backend distribution
-cp -r "app/build/install/app/lib/" "$APP/Contents/Resources/app/lib/"
-cp -r "app/build/install/app/bin/" "$APP/Contents/Resources/app/bin/"
-
-# Copy JRE
-cp -r "$JLINK_BASE"/* "$APP/Contents/Resources/runtime/"
-
-# Copy icons
-cp src-tauri/icons/icon.icns "$APP/Contents/Resources/"
-
-# Create Info.plist
-cat > "$APP/Contents/Info.plist" << EOF
+# Create Info.plist if missing
+if [ ! -f "$APP/Contents/Info.plist" ]; then
+  cat > "$APP/Contents/Info.plist" << 'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>
-    <string>prettyzoo</string>
-    <key>CFBundleIdentifier</key>
-    <string>cc.cc1234.prettyzk</string>
-    <key>CFBundleName</key>
-    <string>PrettyZk</string>
-    <key>CFBundleVersion</key>
-    <string>3.0.0</string>
-    <key>CFBundleShortVersionString</key>
-    <string>3.0.0</string>
-    <key>CFBundleIconFile</key>
-    <string>icon.icns</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>12.0</string>
-    <key>NSHighResolutionCapable</key>
-    <true/>
-</dict>
-</plist>
-EOF
+<plist version="1.0"><dict>
+<key>CFBundleExecutable</key><string>prettyzoo</string>
+<key>CFBundleIdentifier</key><string>cc.cc1234.prettyzk</string>
+<key>CFBundleName</key><string>PrettyZk</string>
+<key>CFBundleVersion</key><string>3.0.0</string>
+<key>CFBundleShortVersionString</key><string>3.0.0</string>
+<key>CFBundleIconFile</key><string>icon.icns</string>
+<key>CFBundlePackageType</key><string>APPL</string>
+<key>LSMinimumSystemVersion</key><string>12.0</string>
+<key>NSHighResolutionCapable</key><true/>
+</dict></plist>
+PLIST
+fi
 
-# 5. Create DMG
-echo "[5/5] Creating DMG..."
-DMG_NAME="PrettyZk_3.0.0_x64.dmg"
-rm -f "$DMG_NAME"
+echo "  App: $(du -sh $APP | cut -f1)"
 
-hdiutil create -volname "PrettyZk" -srcfolder "$APP" \
-  -ov -format UDZO -size 200m "$DMG_NAME" 2>/dev/null
+echo "[6/6] Creating DMG..."
+DMG_DIR="/tmp/prettyzk-dmg"
+rm -rf "$DMG_DIR"
+mkdir -p "$DMG_DIR"
+cp -R "$APP" "$DMG_DIR/PrettyZk.app"
+ln -s /Applications "$DMG_DIR/Applications"
 
-mv "$DMG_NAME" "../$DMG_NAME" 2>/dev/null || true
+rm -f PrettyZk_3.0.0.dmg
+hdiutil create -volname "PrettyZk" -srcfolder "$DMG_DIR" \
+  -ov -format UDZO PrettyZk_3.0.0.dmg 2>/dev/null
+rm -rf "$DMG_DIR"
 
 echo ""
-echo "=== Build Complete ==="
-echo "Installer: $(pwd)/$DMG_NAME"
-echo "Size: $(du -sh "$DMG_NAME" | cut -f1)"
+echo "==========================================="
+echo "  Build Complete!"
+echo "  Installer: $(pwd)/PrettyZk_3.0.0.dmg"
+echo "  Size: $(du -sh PrettyZk_3.0.0.dmg | cut -f1)"
+echo "==========================================="
 echo ""
-echo "To install: open $DMG_NAME and drag PrettyZk.app to Applications"
-echo "If blocked by Gatekeeper: xattr -cr /Applications/PrettyZk.app"
+echo "Install:"
+echo "  open PrettyZk_3.0.0.dmg"
+echo "  Drag PrettyZk.app to Applications"
+echo "  Then: xattr -cr /Applications/PrettyZk.app"
