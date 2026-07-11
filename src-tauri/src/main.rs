@@ -32,38 +32,67 @@ fn download_jre() -> bool { true } // Bundled in .app on macOS
 #[cfg(target_os = "windows")]
 fn download_jre() -> bool {
     let res = resource_dir();
-    let version = "3.0.16";
-    let url = format!(
-        "https://github.com/PrettyZoo/PrettyZk/releases/download/v{}/PrettyZk-jre-v{}.tar.gz",
-        version, version
-    );
+    let url = "https://github.com/PrettyZoo/PrettyZk/releases/download/v3.0.0/PrettyZk-jre.zip";
+    let zip_path = res.join("jre.zip");
 
-    eprintln!("JRE not found. Downloading from {}...", url);
+    eprintln!("Downloading JRE from {}...", url);
 
-    // Download with PowerShell (built into Windows)
-    let path = res.to_str().unwrap_or(".");
-    let dl_script = format!(
-        "$p=\"{0}\"; Invoke-WebRequest -Uri \"{1}\" -OutFile \"$p\\jre.tar.gz\" \
-        -UseBasicParsing; if(Test-Path \"$p\\jre.tar.gz\"){{tar -xzf \"$p\\jre.tar.gz\" -C \"$p\"; \
-        Remove-Item \"$p\\jre.tar.gz\"}}",
-        path, url
+    // Download with PowerShell
+    let dl = format!(
+        "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; \
+        Invoke-WebRequest -Uri '{}' -OutFile '{}' -UseBasicParsing",
+        url, zip_path.to_str().unwrap()
     );
 
     let status = Command::new("powershell")
-        .args(["-NoProfile", "-Command", &dl_script])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
+        .args(["-NoProfile", "-Command", &dl])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .status()
+        .unwrap_or_default();
 
-    match status {
-        Ok(s) if s.success() => {
-            eprintln!("JRE downloaded successfully");
-            true
+    if !status.success() {
+        eprintln!("Download failed (exit: {:?})", status.code());
+        return false;
+    }
+
+    if !zip_path.exists() {
+        eprintln!("Downloaded file not found");
+        return false;
+    }
+
+    // Extract
+    let extract = format!(
+        "Expand-Archive -Path '{}' -DestinationPath '{}' -Force",
+        zip_path.to_str().unwrap(),
+        res.to_str().unwrap()
+    );
+
+    let status2 = Command::new("powershell")
+        .args(["-NoProfile", "-Command", &extract])
+        .status()
+        .unwrap_or_default();
+
+    let _ = std::fs::remove_file(&zip_path);
+
+    if !status2.success() {
+        eprintln!("Extract failed (exit: {:?})", status2.code());
+        return false;
+    }
+
+    let java = res.join("jre").join("runtime").join("bin").join("java.exe");
+    if java.exists() {
+        // Move jre/jre/* to jre/* (handle nested dir)
+        let inner = res.join("jre").join("runtime");
+        if inner.exists() {
+            let _ = std::fs::rename(&inner, &res.join("runtime"));
+            let _ = std::fs::remove_dir_all(res.join("jre"));
         }
-        _ => {
-            eprintln!("Failed to download JRE. Please install Java 17+ manually.");
-            false
-        }
+        eprintln!("JRE installed successfully");
+        true
+    } else {
+        eprintln!("JRE binary not found after extraction");
+        false
     }
 }
 
@@ -80,7 +109,9 @@ fn find_java() -> String {
         if bundled_exe.exists() { return bundled_exe.to_str().unwrap().to_string(); }
     }
 
-    "java".to_string()
+    eprintln!("ERROR: Java not found. Please install Java 17+ from https://adoptium.net/");
+    eprintln!("Or make sure PrettyZk-jre.zip is available in the release assets.");
+    std::process::exit(1);
 }
 
 fn check_server(port: u16) -> bool {
