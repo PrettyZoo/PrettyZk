@@ -84,8 +84,8 @@ jobs:
           cp -R build/jlink-runtime/* src-tauri/resources/runtime/
           cp app/build/install/app/lib/*.jar src-tauri/resources/app/lib/
 
-      - name: Touch config to invalidate build.rs cache
-        run: touch src-tauri/tauri.conf.json
+      - name: Force build.rs re-run
+        run: touch src-tauri/build.rs
 
       - name: Tauri build
         run: cd src-tauri && npx tauri build
