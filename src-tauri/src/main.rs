@@ -14,15 +14,80 @@ struct JavaProcess(Mutex<Option<Child>>);
 fn resource_dir() -> PathBuf {
     let exe = std::env::current_exe().unwrap();
     // macOS: PrettyZk.app/Contents/Resources/
-    // Windows: same dir as exe/resources/
-    // Dev: project root
-    let res = exe.parent().unwrap().join("resources");
-    if res.exists() { return res; }
-    // Try macOS bundle structure
     let mac = exe.parent().unwrap().parent().unwrap().join("Resources");
-    if mac.exists() { return mac; }
-    // Fallback: try parent of parent (dev mode from target/release/)
-    exe.parent().unwrap().parent().unwrap().join("resources")
+    if mac.join("runtime").exists() { return mac; }
+    // Windows/Linux: same dir as exe
+    let win = exe.parent().unwrap().join("resources");
+    if win.join("runtime").exists() { return win; }
+    // Dev mode
+    let dev = exe.parent().unwrap().parent().unwrap().join("resources");
+    if dev.join("runtime").exists() { return dev; }
+    // Fallback: try current_exe parent
+    exe.parent().unwrap().join("resources")
+}
+
+fn ensure_jre(res_dir: &PathBuf) -> bool {
+    let java = res_dir.join("runtime").join("bin").join("java");
+    if cfg!(windows) { return java.with_extension("exe").exists(); }
+    java.exists()
+}
+
+#[cfg(not(target_os = "windows"))]
+fn download_jre() -> bool { true } // Bundled in .app on macOS
+
+#[cfg(target_os = "windows")]
+fn download_jre() -> bool {
+    let res = resource_dir();
+    let version = "3.0.16";
+    let url = format!(
+        "https://github.com/PrettyZoo/PrettyZk/releases/download/v{}/PrettyZk-jre-v{}.tar.gz",
+        version, version
+    );
+
+    eprintln!("JRE not found. Downloading from {}...", url);
+
+    // Download with PowerShell (built into Windows)
+    let dl_script = format!(
+        "$p='{}'; $u='{}'; \
+        [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; \
+        Invoke-WebRequest -Uri $u -OutFile $p\\jre.tar.gz -UseBasicParsing; \
+        tar -xzf $p\\jre.tar.gz -C $p; \
+        Remove-Item $p\\jre.tar.gz",
+        res.to_str().unwrap_or(".")
+    );
+
+    let status = Command::new("powershell")
+        .args(["-NoProfile", "-Command", &dl_script])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+
+    match status {
+        Ok(s) if s.success() => {
+            eprintln!("JRE downloaded successfully");
+            true
+        }
+        _ => {
+            eprintln!("Failed to download JRE. Please install Java 17+ manually.");
+            false
+        }
+    }
+}
+
+fn find_java() -> String {
+    let res = resource_dir();
+    let bundled = res.join("runtime").join("bin").join("java");
+    let bundled_exe = res.join("runtime").join("bin").join("java.exe");
+
+    if bundled.exists() { return bundled.to_str().unwrap().to_string(); }
+    if bundled_exe.exists() { return bundled_exe.to_str().unwrap().to_string(); }
+
+    // Download JRE on Windows if not bundled
+    if cfg!(windows) && download_jre() {
+        if bundled_exe.exists() { return bundled_exe.to_str().unwrap().to_string(); }
+    }
+
+    "java".to_string()
 }
 
 fn check_server(port: u16) -> bool {
@@ -37,18 +102,10 @@ fn check_server(port: u16) -> bool {
     false
 }
 
-fn find_java() -> String {
-    // Try bundled JRE first
-    let bundled = resource_dir().join("runtime").join("bin").join("java");
-    if bundled.exists() { return bundled.to_str().unwrap().to_string(); }
-    // Fall back to system java
-    "java".to_string()
-}
-
 fn start_backend(java: &str, port: u16) -> Child {
     let res = resource_dir();
 
-    // Collect all jar files from lib directory
+    // Collect all jar files
     let lib_dir = res.join("app").join("lib");
     let mut cp = String::new();
 
@@ -86,8 +143,8 @@ fn start_backend(java: &str, port: u16) -> Child {
 }
 
 fn main() {
-    let port = 0u16;
     let java = find_java();
+    let port = 0u16;
     let mut child = start_backend(&java, port);
 
     let stdout = child.stdout.take().unwrap();

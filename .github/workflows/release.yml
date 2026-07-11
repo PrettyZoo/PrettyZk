@@ -65,7 +65,7 @@ jobs:
           mkdir -p "$DMG_DIR" && cp -R "$APP" "$DMG_DIR/PrettyZk.app" && ln -s /Applications "$DMG_DIR/Applications"
           hdiutil create -volname "PrettyZk" -srcfolder "$DMG_DIR" -ov -format UDZO $GITHUB_WORKSPACE/PrettyZk_3.0.0.dmg
 
-      - name: Windows: package JRE bundle
+      - name: Windows: upload JRE for auto-download
         if: runner.os == 'Windows'
         run: |
           mkdir -p dist/jre/runtime dist/jre/app/lib
