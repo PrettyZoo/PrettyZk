@@ -35,6 +35,6 @@ public class ZookeeperParams {
      * mill seconds
      */
     @Builder.Default
-    private int sessionTimeout = 6000;
+    private int sessionTimeout = 60000;
 
 }

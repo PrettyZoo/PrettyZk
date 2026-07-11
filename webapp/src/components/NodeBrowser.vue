@@ -24,7 +24,6 @@
         <div class="toolbar-actions">
           <button class="btn btn-small" @click="sync" :disabled="loading">⟳ {{ t('node.sync') }}</button>
           <button class="btn btn-small btn-primary" @click="showAddDialog">+ {{ t('node.add') }}</button>
-          <button class="btn btn-small btn-ghost" @click="emit('back')">← {{ t('node.back') }}</button>
         </div>
       </div>
       <div class="browse-split">
@@ -64,12 +63,18 @@
             <div class="meta-item"><span class="meta-key">{{ t('node.modifiedTime') }}</span><span class="meta-val">{{ formatTime(selectedNode.modifiedTime) }}</span></div>
           </div>
           <div class="editor-section">
-            <div class="editor-label">{{ t('node.nodeData') }}</div>
+            <div class="editor-toolbar">
+              <span class="editor-label">{{ t('node.nodeData') }}</span>
+              <div class="editor-spacer"></div>
+              <button class="editor-fmt-btn" :class="{ active: editorFmt === 'raw' }" @click="editorFmt = 'raw'">RAW</button>
+              <button class="editor-fmt-btn" :class="{ active: editorFmt === 'json' }" @click="toggleFmt('json')">JSON</button>
+              <button class="editor-fmt-btn" :class="{ active: editorFmt === 'xml' }" @click="toggleFmt('xml')">XML</button>
+            </div>
             <div class="editor-wrap">
               <CodeEditor
-                :model-value="nodeData"
-                @update:model-value="nodeData = $event"
-                language="json" :dark="isDark"
+                :model-value="displayData"
+                @update:model-value="onEditorChange"
+                :language="editorLang" :dark="isDark" :readonly="editorFmt !== 'raw'"
               />
             </div>
           </div>
@@ -84,7 +89,6 @@
       <TerminalApp :server-id="serverId" />
     </div>
 
-    <!-- Context Menu -->
     <div v-if="ctxMenu.show" class="ctx-menu" :style="{ left: ctxMenu.x + 'px', top: ctxMenu.y + 'px' }"
          @click.stop @contextmenu.prevent="closeCtxMenu">
       <div class="ctx-item" @click="ctxMenuAddChild">+ {{ t('node.add') }} Child</div>
@@ -117,9 +121,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { api } from '../api.js'
 import { t } from '../i18n.js'
+import { state } from '../main.js'
 import CodeEditor from './CodeEditor.vue'
 import TerminalApp from './TerminalApp.vue'
 import DialogForm from './DialogForm.vue'
@@ -141,18 +146,46 @@ const fourLetterOutput = ref('')
 const isDark = computed(() => document.documentElement.getAttribute('data-theme') === 'dark')
 const connecting = ref(true)
 const refreshKey = ref(0)
+const showAddForm = ref(false)
+const editorFmt = ref('raw')
 
-// Context menu
-const ctxMenu = ref({ show: false, x: 0, y: 0, node: null })
-function onNodeContextMenu(event, node) {
-  ctxMenu.value = { show: true, x: event.clientX, y: event.clientY, node }
+function toggleFmt(fmt) {
+  if (editorFmt.value === fmt) { editorFmt.value = 'raw'; return }
+  editorFmt.value = fmt
 }
+
+const editorLang = computed(() => editorFmt.value === 'json' ? 'json' : editorFmt.value === 'xml' ? 'xml' : 'text')
+
+const displayData = computed(() => {
+  const raw = nodeData.value || ''
+  if (editorFmt.value === 'raw') return raw
+  try {
+    if (editorFmt.value === 'json') {
+      return JSON.stringify(JSON.parse(raw), null, 2)
+    }
+    if (editorFmt.value === 'xml') {
+      // Simple XML formatting - indent tags
+      return raw.replace(/>\s*</g, '>\n<').split('\n').map((line, i) => {
+        const indent = line.startsWith('</') ? -1 : 0
+        return '  '.repeat(Math.max(0, i + indent)) + line
+      }).join('\n')
+    }
+  } catch (e) { return raw }
+  return raw
+})
+
+function onEditorChange(val) {
+  if (editorFmt.value === 'raw') {
+    nodeData.value = val
+  }
+}
+
+const ctxMenu = ref({ show: false, x: 0, y: 0, node: null })
+function onNodeContextMenu(event, node) { ctxMenu.value = { show: true, x: event.clientX, y: event.clientY, node } }
 function closeCtxMenu() { ctxMenu.value.show = false }
 function ctxMenuAddChild() {
   const n = ctxMenu.value.node; closeCtxMenu()
-  if (!n) return
-  addFormParentOverride.value = n.path
-  showAddForm.value = true
+  if (!n) return; addFormParentOverride.value = n.path; showAddForm.value = true
 }
 function ctxMenuDelete() {
   const n = ctxMenu.value.node; closeCtxMenu()
@@ -161,8 +194,7 @@ function ctxMenuDelete() {
     if (!ok) return
     selectedNode.value = null; selectedNodePath.value = null
     api.deleteNode(props.serverId, n.path).then(() => {
-      window.__toast?.(t('node.deleted'), 'success')
-      refreshTree()
+      window.__toast?.(t('node.deleted'), 'success'); refreshTree()
     }).catch(e => { window.__toast?.('Failed: ' + e.message, 'error') })
   })
 }
@@ -216,8 +248,7 @@ async function onSelectNode(node) {
   selectedNodePath.value = node.path
   try {
     const data = await api.listNodes(props.serverId, node.path)
-    selectedNode.value = data
-    nodeData.value = data.data || ''
+    selectedNode.value = data; nodeData.value = data.data || ''
   } catch (e) { window.__toast?.('Failed to load: ' + e.message, 'error') }
 }
 
@@ -234,8 +265,7 @@ function deleteSelected() {
     if (!ok) return
     selectedNode.value = null; selectedNodePath.value = null
     api.deleteNode(props.serverId, selectedNodePath.value).then(() => {
-      window.__toast?.(t('node.deleted'), 'success')
-      refreshTree()
+      window.__toast?.(t('node.deleted'), 'success'); refreshTree()
     }).catch(e => { window.__toast?.('Failed: ' + e.message, 'error') })
   })
 }
@@ -246,8 +276,7 @@ async function onAddNodeConfirm(form) {
   showAddForm.value = false
   try {
     await api.createNode(props.serverId, form)
-    window.__toast?.(t('node.created'), 'success')
-    refreshTree()
+    window.__toast?.(t('node.created'), 'success'); refreshTree()
   } catch (e) { window.__toast?.('Failed: ' + e.message, 'error') }
 }
 
@@ -275,18 +304,39 @@ function showDialog(title, msg) {
   return new Promise(r => { d.title = title; d.message = msg; d.show = true; d.resolve = r })
 }
 
-const showAddForm = ref(false)
-
-let nodeWs = null
-onMounted(async () => {
+async function connectAndLoad() {
+  connecting.value = true; treeData.value = []; selectedNode.value = null; selectedNodePath.value = null
   try {
     await api.connect(props.serverId)
-    connecting.value = false
-    loadTree('/')
+    state.serverStatuses[props.serverId] = 'connected'
+    connecting.value = false; loadTree('/')
   } catch (e) {
     window.__toast?.('Connection failed: ' + e.message, 'error')
+    state.serverStatuses[props.serverId] = 'disconnected'
     connecting.value = false
   }
+}
+
+let nodeWs = null
+let wsServerId = null
+
+watch(() => props.serverId, (newId, oldId) => {
+  if (nodeWs) { nodeWs.close(); nodeWs = null }
+  connectAndLoad()
+  // Reconnect node events WS
+  wsServerId = newId
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  try {
+    nodeWs = new WebSocket(`${protocol}//${window.location.host}/ws/nodes/${encodeURIComponent(newId)}`)
+    nodeWs.onmessage = (e) => {
+      try { const msg = JSON.parse(e.data); if (['added','updated','deleted'].includes(msg.type)) refreshTree() } catch (_) {}
+    }
+  } catch (e) { console.warn(e) }
+})
+
+onMounted(() => {
+  wsServerId = props.serverId
+  connectAndLoad()
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
   try {
     nodeWs = new WebSocket(`${protocol}//${window.location.host}/ws/nodes/${encodeURIComponent(props.serverId)}`)
@@ -295,18 +345,19 @@ onMounted(async () => {
     }
   } catch (e) { console.warn(e) }
 })
+
 onUnmounted(() => { if (nodeWs) { nodeWs.close(); nodeWs = null } })
 </script>
 
 <style scoped>
-.tab-bar { display:flex; background:var(--header-bg); border-bottom:1px solid var(--border-color); padding:0 4px; flex-shrink:0; }
-.tab-item { display:flex; align-items:center; gap:5px; padding:11px 18px; cursor:pointer; font-size:12px; font-weight:500; color:var(--text-secondary); border-bottom:2px solid transparent; transition:all 0.15s; }
-.tab-item:hover { color:var(--text-primary); background:var(--bg-hover); }
-.tab-item.active { color:var(--accent); border-bottom-color:var(--accent); }
+.tab-bar { display:flex; background:var(--header-bg); border-bottom:1px solid var(--border-color); padding:0 8px; flex-shrink:0; }
+.tab-item { display:flex; align-items:center; gap:5px; padding:10px 16px; cursor:pointer; font-size:12px; font-weight:500; color:var(--text-secondary); border-bottom:2px solid transparent; transition:all 0.12s; margin-bottom:-1px; }
+.tab-item:hover { color:var(--text-primary); background:var(--bg-hover); border-radius:6px 6px 0 0; }
+.tab-item.active { color:var(--accent); border-bottom-color:var(--accent); background:transparent; }
 .tab-icon { font-size:13px; }
 .tab-panel { flex:1; display:flex; flex-direction:column; overflow:hidden; }
 .terminal-tab { background:#1a1a1a; }
-.toolbar { display:flex; align-items:center; padding:8px 16px; background:var(--toolbar-bg); border-bottom:1px solid var(--border-color); gap:8px; min-height:42px; flex-shrink:0; }
+.toolbar { display:flex; align-items:center; padding:7px 16px; background:var(--toolbar-bg); border-bottom:1px solid var(--border-color); gap:8px; min-height:40px; flex-shrink:0; }
 .breadcrumb { font-size:13px; color:var(--text-secondary); flex:1; display:flex; align-items:center; flex-wrap:wrap; }
 .crumb { cursor:pointer; color:var(--accent); padding:2px 5px; border-radius:4px; font-size:12px; }
 .crumb:hover { background:var(--accent-subtle); }
@@ -327,13 +378,21 @@ onUnmounted(() => { if (nodeWs) { nodeWs.close(); nodeWs = null } })
 .detail-header { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; background:var(--toolbar-bg); border-bottom:1px solid var(--border-color); gap:8px; flex-shrink:0; }
 .detail-path { font-size:12px; color:var(--text-secondary); font-family:'SF Mono',Monaco,Consolas,monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .detail-actions { display:flex; gap:4px; flex-shrink:0; }
-.detail-meta { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:0; border-bottom:1px solid var(--border-color); flex-shrink:0; }
-.meta-item { padding:8px 12px; display:flex; flex-direction:column; gap:2px; border-bottom:1px solid var(--border-light); border-right:1px solid var(--border-light); }
-.meta-key { font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px; }
+.detail-meta { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:0; border-bottom:1px solid var(--border-color); flex-shrink:0; background:var(--bg-primary); }
+.meta-item { padding:6px 12px; display:flex; flex-direction:column; gap:1px; border-bottom:1px solid var(--border-light); border-right:1px solid var(--border-light); }
+.meta-item:nth-child(odd) { background:var(--bg-secondary); }
+.meta-key { font-size:10px; color:var(--text-muted); font-weight:600; letter-spacing:0.3px; }
 .meta-val { font-size:13px; font-family:'SF Mono',Monaco,Consolas,monospace; color:var(--text-primary); word-break:break-all; }
 .editor-section { flex:1; display:flex; flex-direction:column; }
-.editor-label { padding:7px 12px; font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; background:var(--toolbar-bg); border-bottom:1px solid var(--border-color); }
-.editor-wrap { flex:1; overflow:hidden; }
+.editor-toolbar { display:flex; align-items:center; padding:4px 12px; background:var(--toolbar-bg); border-bottom:1px solid var(--border-color); gap:4px; }
+.editor-label { font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; }
+.editor-spacer { flex:1; }
+.editor-fmt-btn { padding:2px 8px; border:1px solid var(--border-color); border-radius:4px; background:transparent; color:var(--text-muted); font-size:11px; font-weight:600; cursor:pointer; transition:all 0.12s; }
+.editor-fmt-btn:hover { background:var(--bg-hover); color:var(--text-primary); }
+.editor-fmt-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+.editor-wrap { flex:1; overflow:hidden; display:flex; flex-direction:column; min-height:0; }
+.editor-section { flex:1; display:flex; flex-direction:column; min-height:0; }
+.detail-panel { flex:1; display:flex; flex-direction:column; overflow:hidden; min-height:0; }
 .4lc-output { margin-top:12px; padding:12px; background:var(--code-bg); border:1px solid var(--border-color); border-radius:6px; font-family:'SF Mono',Monaco,monospace; font-size:12px; white-space:pre-wrap; min-height:200px; overflow:auto; }
 .ctx-menu { position:fixed; z-index:9998; background:var(--bg-primary); border:1px solid var(--border-color); border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.15); padding:4px; min-width:140px; }
 .ctx-item { padding:8px 14px; cursor:pointer; font-size:13px; border-radius:4px; color:var(--text-primary); }

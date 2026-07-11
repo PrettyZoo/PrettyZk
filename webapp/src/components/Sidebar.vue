@@ -1,8 +1,8 @@
 <template>
   <nav class="sidebar">
     <div class="sidebar-header">
-      <span class="logo">PZ</span>
-      <span class="brand">{{ t('app.name') }}</span>
+      <span class="logo">🦓</span>
+      <span class="brand">PrettyZoo</span>
     </div>
 
     <div class="sidebar-toolbar">
@@ -21,6 +21,7 @@
         class="server-card"
         :class="{ selected: s.id === selectedId }"
         @click="$emit('select', s.id)"
+        @dblclick="$emit('edit', s.id)"
         @contextmenu.prevent="showContextMenu($event, s)"
       >
         <div class="server-status" :class="statuses[s.id] || 'disconnected'"></div>
@@ -28,9 +29,11 @@
           <div class="server-name">{{ s.alias || s.host + ':' + s.port }}</div>
           <div class="server-host">{{ s.host }}:{{ s.port }}</div>
         </div>
-        <div class="server-acl-badge" v-if="s.acl" title="ACL configured">🔒</div>
-        <button class="server-action-btn" @click.stop="$emit('edit', s.id)" title="Edit">⚙</button>
-        <button class="server-action-btn danger" @click.stop="$emit('delete', s.id)" title="Delete">✕</button>
+        <div class="server-right">
+          <div class="server-connected-dot" v-if="(statuses[s.id] || 'disconnected') === 'connected'" title="Connected"></div>
+          <button class="server-edit-btn" @click.stop="$emit('edit', s.id)" title="Edit">✎</button>
+          <button class="server-del-btn" @click.stop="$emit('delete', s.id)" title="Delete">✕</button>
+        </div>
       </div>
       <div v-if="!servers || servers.length === 0" class="server-empty">
         No servers yet. Click "+" to add one.
@@ -64,34 +67,31 @@ function showContextMenu(e, s) {}
 .sidebar {
   width: var(--sidebar-width, 270px); min-width: var(--sidebar-width, 270px);
   background: var(--sidebar-bg); display: flex; flex-direction: column;
-  border-right: 1px solid rgba(255,255,255,0.04);
+  border-right: 1px solid var(--border-color);
   overflow: hidden; user-select: none;
 }
 .sidebar-header {
   display: flex; align-items: center; gap: 10px;
-  padding: 18px 16px 14px; border-bottom: 1px solid rgba(255,255,255,0.05);
+  padding: 18px 16px 14px; border-bottom: 1px solid var(--border-color);
 }
 .logo {
-  width: 32px; height: 32px; border-radius: 8px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
-  color: #fff;
+  width: 32px; height: 32px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 13px; font-weight: 800; flex-shrink: 0;
-  letter-spacing: 0;
+  font-size: 22px; flex-shrink: 0;
 }
-.brand { font-size: 15px; font-weight: 700; color: #e8e8ee; letter-spacing: 0.3px; }
+.brand { font-size: 15px; font-weight: 700; color: var(--text-primary); letter-spacing: 0.3px; }
 .sidebar-toolbar { padding: 12px 12px 8px; }
 .toolbar-btn {
-  width: 100%; padding: 9px 12px; border: 1px dashed rgba(255,255,255,0.1);
+  width: 100%; padding: 9px 12px; border: 1px dashed var(--border-color);
   border-radius: 8px; background: transparent; color: var(--sidebar-text);
   cursor: pointer; display: flex; align-items: center; gap: 8px;
   font-size: 13px; font-weight: 500; transition: all 0.15s;
 }
-.toolbar-btn:hover { background: var(--sidebar-hover); border-color: var(--accent); color: #e8e8ee; }
+.toolbar-btn:hover { background: var(--sidebar-hover); border-color: var(--accent); color: var(--text-primary); }
 .sidebar-toolbar + .server-list-label { padding-top: 4px; }
 .server-list-label {
   padding: 12px 16px 6px; font-size: 10px; font-weight: 700;
-  color: rgba(255,255,255,0.2); text-transform: uppercase; letter-spacing: 1.2px;
+  color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.2px;
 }
 .server-list { flex: 1; overflow-y: auto; padding: 2px 8px 8px; }
 .server-card {
@@ -106,32 +106,35 @@ function showContextMenu(e, s) {}
 .server-card .server-name { transition: color 0.12s; }
 .server-status {
   width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
-  background: #3a3b4a; transition: all 0.3s;
+  background: var(--text-muted); transition: all 0.3s;
 }
 .server-status.connected { background: var(--success-light); box-shadow: 0 0 6px rgba(76,175,128,0.4); }
-.server-status.disconnected { background: #3a3b4a; }
+.server-status.disconnected { background: var(--border-color); }
 .server-status.connecting { background: var(--warning-light); animation: pulse 1s infinite; }
 .server-info { flex: 1; min-width: 0; }
-.server-name { font-size: 13px; font-weight: 500; color: #c8cad0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.server-host { font-size: 11px; color: rgba(255,255,255,0.2); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.server-action-btn {
-  width: 22px; height: 22px; border: none; background: transparent;
-  color: rgba(255,255,255,0.15); cursor: pointer; border-radius: 4px;
-  font-size: 11px; display: none; align-items: center; justify-content: center;
-  flex-shrink: 0; padding: 0; transition: all 0.12s;
-}
-.server-card:hover .server-action-btn { display: flex; }
-.server-action-btn:hover { color: #c8cad0; background: rgba(255,255,255,0.06); }
-.server-action-btn.danger:hover { color: var(--danger); background: rgba(211,47,47,0.12); }
-.server-empty { padding: 24px 16px; font-size: 12px; color: rgba(255,255,255,0.15); text-align: center; line-height: 1.6; }
+.server-name { font-size: 13px; font-weight: 500; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.server-host { font-size: 11px; color: var(--text-muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.server-right { display: flex; align-items: center; gap: 2px; flex-shrink: 0; opacity: 1; }
+.server-edit-btn { opacity: 0.4; }
+.server-card:hover .server-edit-btn { opacity: 0.7; }
+.server-edit-btn:hover { opacity: 1 !important; }
+.server-del-btn { opacity: 0.3; }
+.server-card:hover .server-del-btn { opacity: 0.6; }
+.server-del-btn:hover { opacity: 1 !important; }
+.server-connected-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success-light); box-shadow: 0 0 8px rgba(76, 175, 128, 0.6); flex-shrink: 0; margin-right: 4px; }
+.server-edit-btn { width: 26px; height: 26px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; border-radius: 5px; font-size: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0; transition: all 0.12s; }
+.server-edit-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
+.server-del-btn { width: 26px; height: 26px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; border-radius: 5px; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0; transition: all 0.12s; }
+.server-del-btn:hover { color: var(--danger); background: var(--danger-light); }
+.server-empty { padding: 24px 16px; font-size: 12px; color: var(--text-muted); text-align: center; line-height: 1.6; }
 .sidebar-footer {
-  display: flex; border-top: 1px solid rgba(255,255,255,0.04); padding: 8px 10px; gap: 4px;
+  display: flex; border-top: 1px solid var(--border-color); padding: 8px 10px; gap: 4px;
 }
 .footer-btn {
   flex: 1; padding: 7px 4px; border: none; border-radius: 6px;
   background: transparent; color: var(--sidebar-text); cursor: pointer;
   font-size: 12px; text-align: center; transition: all 0.12s;
 }
-.footer-btn:hover { background: var(--sidebar-hover); color: #c8cad0; }
+.footer-btn:hover { background: var(--sidebar-hover); color: var(--text-primary); }
 @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.4 } }
 </style>
