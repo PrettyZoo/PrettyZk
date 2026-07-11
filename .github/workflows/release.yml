@@ -96,13 +96,15 @@ jobs:
           cp -R build/jlink-runtime/* dist/jre/runtime/
           cp app/build/install/app/lib/*.jar dist/jre/app/lib/
           cd dist
-          tar -czf "$GITHUB_WORKSPACE/PrettyZk-jre-${{ github.ref_name }}.tar.gz" jre/
+          powershell -Command "Compress-Archive -Path jre -DestinationPath PrettyZk-jre.zip -Force"
+          echo "JRE zip created"
 
-      - uses: softprops/action-gh-release@v2
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             PrettyZk_3.0.0.dmg
-            PrettyZk-jre-${{ github.ref_name }}.tar.gz
+            dist/PrettyZk-jre.zip
             src-tauri/target/release/bundle/**/*.${{ matrix.ext }}
           draft: true
           fail_on_unmatched_files: false
