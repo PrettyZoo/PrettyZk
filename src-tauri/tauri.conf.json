@@ -6,8 +6,7 @@
   "build": {
     "frontendDist": "../app/src/main/resources/web",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "cd ../webapp && npm run dev",
-    "beforeBuildCommand": "cd ../webapp && npm run build"
+    "beforeBuildCommand": "cd /Users/dujie/IdeaProjects/PrettyZoo/webapp && npm run build"
   },
   "app": {
     "windows": [
@@ -34,6 +33,8 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "externalBin": [],
+    "resources": []
   }
 }
