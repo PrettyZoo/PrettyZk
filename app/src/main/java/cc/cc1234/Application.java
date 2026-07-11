@@ -7,10 +7,7 @@ import cc.cc1234.web.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.awt.*;
-import java.io.IOException;
 import java.net.ServerSocket;
-import java.net.URI;
 
 public class Application {
 
@@ -67,26 +64,15 @@ public class Application {
         server.start(host, port);
         port = server.getPort();
 
-        if (!webMode) {
-            // Desktop mode: open system browser
-            String url = "http://127.0.0.1:" + port;
-            LOG.info("Opening browser to {}", url);
-            try {
-                if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                    Desktop.getDesktop().browse(URI.create(url));
-                } else {
-                    LOG.warn("Desktop browse not supported. Please open {} manually.", url);
-                }
-            } catch (IOException e) {
-                LOG.error("Failed to open browser: {}", e.getMessage());
-                LOG.info("Please open {} in your browser.", url);
-            }
-        } else {
-            // Web deployment mode
+        if (webMode) {
+            // Web deployment mode: logs URL, externally accessible
             LOG.info("=============================================");
             LOG.info("  PrettyZoo Web Server started");
             LOG.info("  Listen on http://{}:{}", host, port);
             LOG.info("=============================================");
+        } else {
+            // Desktop mode: print URL for Tauri/Electron shell
+            LOG.info("PrettyZoo started on http://127.0.0.1:{}", port);
         }
 
         // Keep the server running
