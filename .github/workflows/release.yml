@@ -65,7 +65,7 @@ jobs:
         run: |
           jlink --module-path "$JAVA_HOME/jmods" \
             --add-modules java.base,java.desktop,java.logging,java.naming,java.management,java.instrument,java.security.jgss,java.net.http,java.scripting,java.xml,jdk.unsupported \
-            --strip-debug --no-header-files --no-man-pages --output build/jlink-runtime
+            --no-header-files --no-man-pages --output build/jlink-runtime
           rm -rf build/jlink-runtime/legal
 
       - name: Tauri build
