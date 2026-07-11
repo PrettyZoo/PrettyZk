@@ -26,12 +26,6 @@ fn resource_dir() -> PathBuf {
     exe.parent().unwrap().join("resources")
 }
 
-fn ensure_jre(res_dir: &PathBuf) -> bool {
-    let java = res_dir.join("runtime").join("bin").join("java");
-    if cfg!(windows) { return java.with_extension("exe").exists(); }
-    java.exists()
-}
-
 #[cfg(not(target_os = "windows"))]
 fn download_jre() -> bool { true } // Bundled in .app on macOS
 
