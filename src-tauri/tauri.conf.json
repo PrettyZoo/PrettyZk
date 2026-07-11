@@ -6,7 +6,7 @@
   "build": {
     "frontendDist": "../app/src/main/resources/web",
     "devUrl": "http://localhost:5173",
-    "beforeBuildCommand": "cd ../webapp && npm run build"
+    "beforeBuildCommand": "echo 'frontend built in workflow'"
   },
   "app": {
     "windows": [
