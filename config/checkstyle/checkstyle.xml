@@ -327,7 +327,7 @@
             <property name="optional" value="true"/>
         </module>
 
-        <!-- prettyZoo extra rule -->
+        <!-- PrettyZk extra rules -->
         <module name="IllegalImport"/>
         <module name="RedundantImport"/>
         <module name="UnusedImports"/>

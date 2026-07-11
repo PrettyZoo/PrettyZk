@@ -22,7 +22,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { api } from '../api.ts'
-import { state } from '../main.ts'
 import { t } from '../i18n.ts'
 
 defineProps({ servers: { type: Array, default: () => [] } })

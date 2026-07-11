@@ -2,7 +2,7 @@
 
 import { ref } from 'vue'
 
-const messages = {
+const messages: Record<string, Record<string, unknown>> = {
   en: {
     app: { name: 'PrettyZk' },
     sidebar: {
@@ -11,6 +11,10 @@ const messages = {
       servers: 'Servers',
       noServers: 'No servers yet. Click "+" to add one.',
       logs: 'Logs',
+      exp: 'Exp',
+      imp: 'Imp',
+      importSuccess: 'Config imported, please restart',
+      importFailed: 'Import failed: {msg}',
     },
     welcome: {
       title: 'Welcome to PrettyZk',
@@ -47,9 +51,13 @@ const messages = {
       save: 'Save',
       cancel: 'Cancel',
       saved: 'Server saved',
+      saveFailed: 'Failed to save: {msg}',
       delete: 'Delete',
       deleteConfirm: 'Are you sure you want to delete this server?',
+      deleteTitle: 'Delete Server',
       deleted: 'Server deleted',
+      deleteFailed: 'Failed to delete: {msg}',
+      loadFailed: 'Failed to load server: {msg}',
       connect: 'Connect',
       disconnect: 'Disconnect',
       connected: 'Connected',
@@ -65,8 +73,8 @@ const messages = {
       search: 'Search nodes...',
       root: '/ (root)',
       selectNode: 'Select a node to view details',
-      loading: "Loading...",
-      connecting: "Connecting...",
+      loading: 'Loading...',
+      connecting: 'Connecting...',
       addNode: 'Add Node',
       parentPath: 'Parent Path',
       nodeName: 'Node Name',
@@ -74,10 +82,16 @@ const messages = {
       nodeMode: 'Node Mode',
       save: 'Save',
       dataSaved: 'Data saved',
+      saveFailed: 'Failed to save: {msg}',
       deleteNode: 'Delete Node',
       deleteConfirm: 'Delete {path}?',
       deleted: 'Node deleted',
+      deleteFailed: 'Failed: {msg}',
       created: 'Node created',
+      loadFailed: 'Failed to load: {msg}',
+      synced: 'Synced',
+      enterCmd: 'Enter 4-letter command',
+      error: 'Error: {msg}',
       path: 'Path',
       dataLength: 'Data Length',
       children: 'Children',
@@ -103,6 +117,12 @@ const messages = {
       title: 'Application Logs',
       clear: 'Clear',
       streaming: 'Streaming logs...',
+      connecting: 'Connecting...',
+      connectFailed: 'Failed to connect: {msg}',
+    },
+    config: {
+      exportSuccess: 'Config exported',
+      exportFailed: 'Export failed: {msg}',
     },
     common: {
       confirm: 'Confirm',
@@ -122,6 +142,10 @@ const messages = {
       servers: '服务器列表',
       noServers: '暂无服务器，点击"+"添加',
       logs: '日志',
+      exp: '导出',
+      imp: '导入',
+      importSuccess: '配置已导入，请重启应用',
+      importFailed: '导入失败: {msg}',
     },
     welcome: {
       title: '欢迎使用 PrettyZk',
@@ -158,9 +182,13 @@ const messages = {
       save: '保存',
       cancel: '取消',
       saved: '服务器已保存',
+      saveFailed: '保存失败: {msg}',
       delete: '删除',
       deleteConfirm: '确定要删除此服务器吗？',
+      deleteTitle: '删除服务器',
       deleted: '服务器已删除',
+      deleteFailed: '删除失败: {msg}',
+      loadFailed: '加载服务器失败: {msg}',
       connect: '连接',
       disconnect: '断开',
       connected: '已连接',
@@ -176,8 +204,8 @@ const messages = {
       search: '搜索节点...',
       root: '/ (根节点)',
       selectNode: '选择一个节点查看详情',
-      loading: "加载中...",
-      connecting: "连接中...",
+      loading: '加载中...',
+      connecting: '连接中...',
       addNode: '添加节点',
       parentPath: '父路径',
       nodeName: '节点名称',
@@ -185,10 +213,16 @@ const messages = {
       nodeMode: '节点模式',
       save: '保存',
       dataSaved: '数据已保存',
+      saveFailed: '保存失败: {msg}',
       deleteNode: '删除节点',
       deleteConfirm: '确定删除 {path} 吗？',
       deleted: '节点已删除',
+      deleteFailed: '删除失败: {msg}',
       created: '节点已创建',
+      loadFailed: '加载失败: {msg}',
+      synced: '已同步',
+      enterCmd: '请输入4位管理命令',
+      error: '错误: {msg}',
       path: '路径',
       dataLength: '数据长度',
       children: '子节点',
@@ -214,6 +248,12 @@ const messages = {
       title: '应用日志',
       clear: '清空',
       streaming: '日志流...',
+      connecting: '连接中...',
+      connectFailed: '连接失败: {msg}',
+    },
+    config: {
+      exportSuccess: '配置已导出',
+      exportFailed: '导出失败: {msg}',
     },
     common: {
       confirm: '确认',
@@ -226,21 +266,31 @@ const messages = {
   },
 }
 
+const LOCALE_STORAGE_KEY = 'prettyzk-locale'
 const fallbackLocale = 'en'
-const localeState = ref(navigator.language?.startsWith('zh') ? 'zh' : 'en')
 
-export function t(key, params = {}) {
+function detectLocale(): string {
+  // Check localStorage first
+  const saved = localStorage.getItem(LOCALE_STORAGE_KEY)
+  if (saved && messages[saved]) return saved
+  // Fall back to browser language
+  return navigator.language?.startsWith('zh') ? 'zh' : 'en'
+}
+
+const localeState = ref(detectLocale())
+
+export function t(key: string, params: Record<string, string> = {}) {
   const currentLocale = localeState.value
   const keys = key.split('.')
-  let msg = messages[currentLocale]
+  let msg: unknown = messages[currentLocale]
   for (const k of keys) {
-    msg = msg?.[k]
+    msg = (msg as Record<string, unknown>)?.[k]
     if (msg === undefined) break
   }
   if (msg === undefined) {
     msg = messages[fallbackLocale]
     for (const k of keys) {
-      msg = msg?.[k]
+      msg = (msg as Record<string, unknown>)?.[k]
       if (msg === undefined) break
     }
   }
@@ -250,9 +300,10 @@ export function t(key, params = {}) {
   return key
 }
 
-export function setLocale(locale) {
+export function setLocale(locale: string) {
   if (messages[locale]) {
     localeState.value = locale
+    localStorage.setItem(LOCALE_STORAGE_KEY, locale)
     return true
   }
   return false
@@ -261,5 +312,3 @@ export function setLocale(locale) {
 export function getLocale() {
   return localeState.value
 }
-
-window.__t = t

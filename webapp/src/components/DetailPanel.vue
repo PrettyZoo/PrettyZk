@@ -37,6 +37,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { t } from '../i18n.ts'
+import { state } from '../main.ts'
 import CodeEditor from './CodeEditor.vue'
 
 const props = defineProps({
@@ -46,7 +47,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['save', 'delete', 'update:nodeData'])
 
-const isDark = computed(() => document.documentElement.getAttribute('data-theme') === 'dark')
+const isDark = computed(() => state.config.theme === 'dark')
 const editorFmt = ref('raw')
 
 function toggleFmt(fmt) {

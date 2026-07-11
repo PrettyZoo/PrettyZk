@@ -24,7 +24,7 @@ public class PrettyZkWebServer {
 
     private final NodeEventWsManager nodeEventWsManager;
 
-    private Javalin app;
+    private volatile Javalin app;
 
     public PrettyZkWebServer(ServerApi serverApi, NodeApi nodeApi,
                               ConfigApi configApi, TerminalApi terminalApi,
@@ -61,7 +61,7 @@ public class PrettyZkWebServer {
         app.exception(Exception.class, (e, ctx) -> {
             LOG.error("Unhandled exception in {} {}", ctx.method(), ctx.path(), e);
             ctx.status(500);
-            ctx.json(Map.of("error", e.getMessage() != null ? e.getMessage() : "Internal server error"));
+            ctx.json(Map.of("error", "Internal server error"));
         });
 
         registerRoutes();

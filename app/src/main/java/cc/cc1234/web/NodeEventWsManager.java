@@ -50,17 +50,21 @@ public class NodeEventWsManager {
             msg.put("server", serverId);
             String json = JSON.writeValueAsString(msg);
 
+            var staleClients = new java.util.ArrayList<WsContext>();
             for (WsContext ctx : clients) {
                 if (ctx.session.isOpen()) {
                     try {
                         ctx.send(json);
                     } catch (Exception e) {
                         LOG.warn("Failed to send WS event", e);
-                        clients.remove(ctx);
+                        staleClients.add(ctx);
                     }
                 } else {
-                    clients.remove(ctx);
+                    staleClients.add(ctx);
                 }
+            }
+            if (!staleClients.isEmpty()) {
+                clients.removeAll(staleClients);
             }
         } catch (Exception e) {
             LOG.warn("Failed to serialize WS event", e);

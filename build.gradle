@@ -38,13 +38,13 @@ subprojects {
     }
 
     ext {
-        slf4jVersion = '1.7.28'
-        jacksonVersion = '2.12.0'
-        log4jVersion = '2.20.0'
+        slf4jVersion = '2.0.6'
+        jacksonVersion = '2.18.0'
+        log4jVersion = '2.24.0'
         junitVersion = '4.12'
         zookeeperVersion = '3.6.4'
         curatorRecipesVersion = '5.4.0'
-        guavaVersion = '27.0.1-jre'
+        guavaVersion = '33.0.0-jre'
         sshjVersion = '0.34.0'
         javalinVersion = '6.4.0'
         commonsIoVersion = '2.10.0'

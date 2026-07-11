@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-    <img src="https://img.shields.io/badge/language-Java%2017%20%2B%20Vue%203-blue" alt="language">
+    <img src="https://img.shields.io/badge/language-Java%2021%20%2B%20Vue%203-blue" alt="language">
     <img src="https://img.shields.io/badge/license-Apache%202.0-green" alt="license">
 </p>
 
@@ -32,20 +32,22 @@
 
 ### Prerequisites
 
-- Java 17+
+- Java 21+
 - Rust (for Tauri build)
+- WebView2 (Windows only, auto-installed by MSI)
 
 ### Build & Run
 
 ```bash
-# 1. Build backend distribution
+# 1. Build frontend
+cd webapp && npm install && npm run build
+
+# 2. Build backend distribution
 ./gradlew :app:installDist
 
-# 2. Build desktop app
+# 3. Build and run desktop app
 cd src-tauri
 cargo build --release
-
-# 3. Run
 ./target/release/prettyzoo
 ```
 
@@ -56,16 +58,19 @@ cargo build --release
 cd webapp && npm install && npm run build
 
 # Start backend
-cd .. && ./bin/prettyzoo
+cd .. && app/build/install/app/bin/app
 # Open http://127.0.0.1:{port} in browser for dev
 ```
 
 ### Package Installer
 
 ```bash
-cd src-tauri
-cargo tauri build
-# Output: src-tauri/target/release/bundle/
+# macOS
+./scripts/build-installer.sh
+
+# Windows (requires NSIS and WiX Toolset)
+cd src-tauri && npx tauri build
+# Output: src-tauri/target/release/bundle/msi/
 ```
 
 ## 📦 Tech Stack

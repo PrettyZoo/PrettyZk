@@ -2,14 +2,12 @@ package cc.cc1234.web.api;
 
 import cc.cc1234.core.configuration.entity.Configuration;
 import cc.cc1234.core.configuration.service.ConfigurationDomainService;
-import cc.cc1234.specification.config.model.ConfigData;
 import cc.cc1234.version.Version;
 import io.javalin.http.Context;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.*;
 
@@ -62,7 +60,7 @@ public class ConfigApi {
             ctx.json(Map.of("theme", theme));
         } catch (Exception e) {
             ctx.status(400);
-            ctx.json(Map.of("error", e.getMessage()));
+            ctx.json(Map.of("error", "Invalid request"));
         }
     }
 
@@ -71,8 +69,8 @@ public class ConfigApi {
         try {
             @SuppressWarnings("unchecked")
             Map<String, Object> body = ctx.bodyAsClass(Map.class);
-            Integer fontSize = body.get("fontSize") instanceof Number ?
-                    ((Number) body.get("fontSize")).intValue() : null;
+            Integer fontSize = body.get("fontSize") instanceof Number n ?
+                    n.intValue() : null;
             if (fontSize == null || fontSize < 8 || fontSize > 25) {
                 ctx.status(400);
                 ctx.json(Map.of("error", "fontSize must be between 8 and 25"));
@@ -82,7 +80,7 @@ public class ConfigApi {
             ctx.json(Map.of("fontSize", fontSize));
         } catch (Exception e) {
             ctx.status(400);
-            ctx.json(Map.of("error", e.getMessage()));
+            ctx.json(Map.of("error", "Invalid request"));
         }
     }
 
@@ -101,14 +99,14 @@ public class ConfigApi {
             ctx.json(Map.of("locale", langTag));
         } catch (Exception e) {
             ctx.status(400);
-            ctx.json(Map.of("error", e.getMessage()));
+            ctx.json(Map.of("error", "Invalid locale"));
         }
     }
 
     public void exportConfig(Context ctx) {
+        File tempFile = null;
         try {
-            File tempFile = File.createTempFile("prettyZoo-config-", ".json");
-            tempFile.deleteOnExit();
+            tempFile = File.createTempFile("prettyZoo-config-", ".json");
             configurationDomainService.exportConfig(tempFile);
             String content = Files.readString(tempFile.toPath());
             ctx.contentType("application/json");
@@ -116,22 +114,30 @@ public class ConfigApi {
         } catch (Exception e) {
             LOG.error("Failed to export config", e);
             ctx.status(500);
-            ctx.json(Map.of("error", e.getMessage()));
+            ctx.json(Map.of("error", "Failed to export config"));
+        } finally {
+            if (tempFile != null) {
+                try { Files.deleteIfExists(tempFile.toPath()); } catch (Exception ignored) {}
+            }
         }
     }
 
     public void importConfig(Context ctx) {
+        File tempFile = null;
         try {
             String bodyStr = ctx.body();
-            File tempFile = File.createTempFile("prettyZoo-config-import-", ".json");
-            tempFile.deleteOnExit();
+            tempFile = File.createTempFile("prettyZoo-config-import-", ".json");
             Files.writeString(tempFile.toPath(), bodyStr);
             configurationDomainService.importConfig(tempFile);
             ctx.json(Map.of("status", "imported"));
         } catch (Exception e) {
             LOG.error("Failed to import config", e);
             ctx.status(500);
-            ctx.json(Map.of("error", e.getMessage()));
+            ctx.json(Map.of("error", "Failed to import config"));
+        } finally {
+            if (tempFile != null) {
+                try { Files.deleteIfExists(tempFile.toPath()); } catch (Exception ignored) {}
+            }
         }
     }
 

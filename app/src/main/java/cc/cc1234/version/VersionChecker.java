@@ -10,25 +10,25 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 public class VersionChecker {
 
     private static final Logger logger = LoggerFactory.getLogger(VersionChecker.class);
+    private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
+    private static final JsonMapper JSON_MAPPER = new JsonMapper();
 
     public static CompletableFuture<VersionResult> checkAsync() {
         URI uri = URI.create("https://api.github.com/repos/PrettyZoo/PrettyZk/releases/latest");
         var request = HttpRequest.newBuilder(uri).build();
-        var client = HttpClient.newHttpClient();
 
-        return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+        return HTTP_CLIENT.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenApply(response -> {
                     try {
-                        final JsonMapper mapper = new JsonMapper();
-                        final ObjectNode node = mapper.readValue(response.body(), ObjectNode.class);
-                        final String latestVersion = node.get("tag_name").asText("");
-                        final String features = node.get("body").asText("");
+                        final ObjectNode node = JSON_MAPPER.readValue(response.body(), ObjectNode.class);
+                        final String latestVersion = node.has("tag_name")
+                                ? node.get("tag_name").asText("") : "";
+                        final String features = node.has("body")
+                                ? node.get("body").asText("") : "";
                         boolean hasNew = isLargerThanCurrent(latestVersion);
                         return new VersionResult(hasNew, latestVersion, features);
                     } catch (Exception e) {
@@ -43,25 +43,32 @@ public class VersionChecker {
     }
 
     private static boolean isLargerThanCurrent(String remoteVersion) {
-        final String[] arr = remoteVersion.split("v");
-        String r = remoteVersion;
-        if (arr.length == 2) {
-            r = arr[1];
+        if (remoteVersion == null || remoteVersion.isBlank()) {
+            return false;
         }
+        // Strip optional leading "v" prefix (e.g., "v3.0.0" -> "3.0.0")
+        String r = remoteVersion.startsWith("v") ? remoteVersion.substring(1) : remoteVersion;
 
         final String[] localVersionArr = Version.VERSION.split("\\.");
         final String[] remoteVersionArr = r.split("\\.");
-        for (int i = 0; i < localVersionArr.length; i++) {
+
+        int maxLen = Math.max(localVersionArr.length, remoteVersionArr.length);
+        for (int i = 0; i < maxLen; i++) {
             try {
-                final int localVersionSymbol = Integer.parseInt(localVersionArr[i]);
-                final int remoteVersionSymbol = Integer.parseInt(remoteVersionArr[i]);
-                if (localVersionSymbol < remoteVersionSymbol) {
+                int local = i < localVersionArr.length
+                        ? Integer.parseInt(localVersionArr[i].trim()) : 0;
+                int remote = i < remoteVersionArr.length
+                        ? Integer.parseInt(remoteVersionArr[i].trim()) : 0;
+                if (local < remote) {
                     return true;
-                } else if (localVersionSymbol > remoteVersionSymbol) {
+                } else if (local > remote) {
                     return false;
                 }
-            } catch (Exception e) {
-                return true;
+            } catch (NumberFormatException e) {
+                logger.debug("Non-numeric version segment at position {}, local='{}', remote='{}'",
+                        i, i < localVersionArr.length ? localVersionArr[i] : "0",
+                        i < remoteVersionArr.length ? remoteVersionArr[i] : "0");
+                return false; // Don't alert on non-numeric versions
             }
         }
         return false;

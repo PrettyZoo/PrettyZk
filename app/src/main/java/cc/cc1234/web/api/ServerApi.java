@@ -91,8 +91,8 @@ public class ServerApi {
                     .alias(form.zkAlias != null ? form.zkAlias : "")
                     .host(form.zkHost != null ? form.zkHost : "")
                     .port(form.zkPort != null ? form.zkPort : 2181)
-                    .aclList(form.acl != null ?
-                            new ArrayList<>(List.of(form.acl.split("\n"))) : List.of())
+                    .aclList(form.acl != null && !form.acl.isBlank() ?
+                            form.acl.lines().filter(s -> !s.isBlank()).toList() : List.of())
                     .sshTunnelEnabled(form.sshEnabled != null && form.sshEnabled)
                     .sshTunnel(tunnelConfig)
                     .enableConnectionAdvanceConfiguration(form.connectionTimeout != null)

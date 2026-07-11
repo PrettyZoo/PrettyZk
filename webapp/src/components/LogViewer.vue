@@ -10,7 +10,7 @@
     <div class="log-scroll" ref="logContainer">
       <div v-for="(line, i) in logs" :key="i" class="log-line">{{ line }}</div>
       <div v-if="connected" class="log-line" style="color:var(--text-muted);font-size:11px">{{ t('log.streaming') }}</div>
-      <div v-else class="log-line" style="color:var(--text-muted)">Connecting...</div>
+      <div v-else class="log-line" style="color:var(--text-muted)">{{ t('log.connecting') }}</div>
     </div>
   </div>
 </template>
@@ -38,8 +38,8 @@ onMounted(() => {
     })
     eventSource.onopen = () => { connected.value = true }
     eventSource.onerror = () => { connected.value = false }
-  } catch (e) {
-    logs.value.push('Failed to connect: ' + e.message)
+  } catch (e: any) {
+    logs.value.push(t('log.connectFailed', { msg: e.message }))
   }
 })
 

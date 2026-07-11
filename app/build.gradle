@@ -1,5 +1,4 @@
 plugins {
-    id 'org.beryx.jlink' version '2.26.0'
     id 'idea'
     id 'application'
 }
@@ -13,84 +12,6 @@ run {
 }
 
 applicationDefaultJvmArgs = ["-Dfile.encoding=utf-8"]
-
-jlink {
-    options = ['--strip-debug', '--compress', '2', '--no-header-files', '--no-man-pages']
-    forceMerge("jackson", "log4j-api")
-    launcher {
-        name = 'prettyZoo'
-        jvmArgs = ["-Dfile.encoding=utf-8"]
-    }
-    jpackage {
-        def os = org.gradle.internal.os.OperatingSystem.current()
-        installerOptions = [
-                '--resource-dir', 'src/main/resources',
-                '--name', 'PrettyZoo',
-                '--app-version', "${project.version}",
-                '--description', 'Pretty nice Zookeeper GUI',
-                '--copyright', 'Apache License',
-                '--vendor', 'vran'
-        ]
-        if (os.windows) {
-            icon = 'src/main/resources/assets/icon/icon.ico'
-            installerOptions += [
-                    '--win-per-user-install', '--win-dir-chooser',
-                    '--win-shortcut'
-            ]
-        }
-
-        if (os.macOsX) {
-            installerType = 'dmg'
-            icon = 'src/main/resources/assets/icon/Icon.icns'
-        }
-
-        if (os.linux) {
-            icon = 'src/main/resources/assets/icon/icon.png'
-            installerOptions += [
-                    '--linux-deb-maintainer', 'vran_dev@foxmail.com',
-                    '--linux-rpm-license-type', 'GPLv3',
-                    '--linux-shortcut'
-            ]
-        }
-    }
-}
-
-jpackage {
-    doLast {
-        file("${buildDir}/jpackage/prettyZoo-${version}.dmg").renameTo("${buildDir}/jpackage/prettyZoo-mac.dmg")
-        file("${buildDir}/jpackage/prettyZoo-${version}.msi").renameTo("${buildDir}/jpackage/prettyZoo-win.msi")
-        file("${buildDir}/jpackage/prettyZoo-${version}.rpm").renameTo("${buildDir}/jpackage/prettyZoo-linux.rpm")
-        file("${buildDir}/jpackage/prettyZoo-${version}.deb").renameTo("${buildDir}/jpackage/prettyZoo-linux.deb")
-    }
-}
-
-task releaseWinZip(type: Zip, dependsOn: jpackage) {
-    def os = org.gradle.internal.os.OperatingSystem.current()
-    if (os.windows) {
-        from "${buildDir}/jpackage/prettyZoo"
-        archiveFileName = "prettyZoo-win.zip"
-        destinationDirectory = file("$buildDir/jpackage")
-    }
-}
-
-task releaseJarZip(dependsOn: distZip) {
-    def os = org.gradle.internal.os.OperatingSystem.current()
-    if (os.windows) {
-        file("${buildDir}/distributions/app-${version}.zip").renameTo("${buildDir}/jpackage/prettyZoo-win-java17.zip")
-        println "windows jar zip release ok"
-        return
-    }
-    if (os.linux) {
-        file("${buildDir}/distributions/app-${version}.zip").renameTo("${buildDir}/jpackage/prettyZoo-linux-java17.zip")
-        println "linux jar zip release ok"
-        return
-    }
-    if (os.macOsX) {
-        file("${buildDir}/distributions/app-${version}.zip").renameTo("${buildDir}/jpackage/prettyZoo-mac-java17.zip")
-        println "macOsX jar zip release ok"
-        return
-    }
-}
 
 dependencies {
     api project(':core')

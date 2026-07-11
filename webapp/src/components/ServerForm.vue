@@ -128,7 +128,7 @@ onMounted(async () => {
       if (s.maxRetries) form.maxRetries = s.maxRetries
       if (s.retryIntervalTime) form.retryInterval = s.retryIntervalTime
     } catch (e) {
-      window.__toast?.('Failed to load server: ' + e.message, 'error')
+      window.__toast?.(t('server.loadFailed', { msg: e.message }), 'error')
     }
   }
 })
@@ -148,10 +148,10 @@ async function save() {
       zkVersion: form.zkVersion,
     }
     const result = await api.saveServer(data)
-    window.__toast?.('Server saved', 'success')
+    window.__toast?.(t('server.saved'), 'success')
     emit('saved', result.id)
   } catch (e) {
-    window.__toast?.('Failed to save: ' + e.message, 'error')
+    window.__toast?.(t('server.saveFailed', { msg: e.message }), 'error')
   } finally {
     saving.value = false
   }
@@ -174,16 +174,4 @@ async function save() {
 .form-row { display: flex; gap: 12px; }
 .form-row .form-group { flex: 1; }
 .form-actions { display: flex; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border-color); }
-.toggle-switch { position: relative; display: inline-block; width: 36px; height: 20px; }
-.toggle-switch input { opacity: 0; width: 0; height: 0; }
-.toggle-slider {
-  position: absolute; cursor: pointer; top:0; left:0; right:0; bottom:0;
-  background: var(--text-muted); border-radius: 20px; transition: 0.3s;
-}
-.toggle-slider:before {
-  content: ""; position: absolute; height: 16px; width: 16px;
-  left: 2px; bottom: 2px; background: white; border-radius: 50%; transition: 0.3s;
-}
-.toggle-switch input:checked + .toggle-slider { background: var(--accent); }
-.toggle-switch input:checked + .toggle-slider:before { transform: translateX(16px); }
 </style>

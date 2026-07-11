@@ -41,8 +41,8 @@
     </div>
 
     <div class="sidebar-footer">
-      <button class="footer-btn" @click="$emit('config-export')" title="Export Config">Exp</button>
-      <button class="footer-btn" @click="onImportConfig" title="Import Config">Imp</button>
+      <button class="footer-btn" @click="$emit('config-export')" :title="t('config.exportSuccess')">{{ t('sidebar.exp') }}</button>
+      <button class="footer-btn" @click="onImportConfig" :title="t('sidebar.imp')">{{ t('sidebar.imp') }}</button>
       <button class="footer-btn" @click="$emit('logs')" title="Logs">📋 {{ t('sidebar.logs') }}</button>
       <button class="footer-btn" @click="$emit('toggle-lang')" title="Switch Language">{{ locale === 'zh' ? 'English' : '中文' }}</button>
       <button class="footer-btn" @click="showFontSlider = !showFontSlider" title="Font Size">🔤</button>
@@ -81,9 +81,9 @@ async function onImportConfig() {
     try {
       const text = await file.text()
       await api.importConfig(text)
-      window.__toast?.('Config imported, please restart', 'success')
+      window.__toast?.(t('sidebar.importSuccess'), 'success')
     } catch (e) {
-      window.__toast?.('Import failed: ' + e.message, 'error')
+      window.__toast?.(t('sidebar.importFailed', { msg: e.message }), 'error')
     }
   }
   input.click()

@@ -1,4 +1,13 @@
 {
+  "name": "prettyzoo",
+  "private": true,
+  "scripts": {
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "web:dev": "cd webapp && npm run dev",
+    "web:build": "cd webapp && npm run build"
+  },
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.4"
   }

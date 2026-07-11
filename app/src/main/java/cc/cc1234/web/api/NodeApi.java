@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 public class NodeApi {
 
     private static final Logger LOG = LoggerFactory.getLogger(NodeApi.class);
+    private static final Set<String> ALLOWED_4LC = Set.of("ruok", "stat", "mntr", "conf", "srvr", "cons", "dump", "envi", "srst");
 
     private final ZookeeperDomainService zookeeperDomainService;
     private final ConfigurationDomainService configurationDomainService;
@@ -31,8 +32,12 @@ public class NodeApi {
         String serverId = ctx.pathParam("serverId");
         String path = ctx.queryParam("path");
         if (path == null || path.isBlank()) path = "/";
+        if (path.contains("..")) {
+            ctx.status(400);
+            ctx.json(Map.of("error", "Invalid path"));
+            return;
+        }
         try {
-            // Lazy load: get node and children directly without full TreeCache sync
             ZkNode node = zookeeperDomainService.getNode(serverId, path);
             List<String> children = zookeeperDomainService.getChildren(serverId, path);
             Map<String, Object> result = new LinkedHashMap<>();
@@ -46,7 +51,6 @@ public class NodeApi {
             result.put("dataVersion", node.getVersion());
             result.put("ephemeral", node.getEphemeralOwner() != 0);
 
-            // Lazy load: only return child names/paths, no per-child getNode() call
             List<Map<String, Object>> childNodes = new ArrayList<>();
             for (String childName : children) {
                 String childPath = "/".equals(path) ? "/" + childName : path + "/" + childName;
@@ -60,7 +64,7 @@ public class NodeApi {
         } catch (Exception e) {
             LOG.error("Failed to list nodes for server {} at {}", serverId, path, e);
             ctx.status(500);
-            ctx.json(Map.of("error", e.getMessage()));
+            ctx.json(Map.of("error", "Failed to list nodes"));
         }
     }
 
@@ -71,7 +75,17 @@ public class NodeApi {
         String serverId = ctx.pathParam("serverId");
         try {
             CreateNodeForm form = ctx.bodyAsClass(CreateNodeForm.class);
-            String parentPath = form.path != null ? form.path : "/";
+            if (form.name == null || form.name.isBlank()) {
+                ctx.status(400);
+                ctx.json(Map.of("error", "Node name is required"));
+                return;
+            }
+            if (form.name.contains("/") || form.name.contains("..")) {
+                ctx.status(400);
+                ctx.json(Map.of("error", "Invalid node name"));
+                return;
+            }
+            String parentPath = form.path != null && !form.path.isBlank() ? form.path : "/";
             String fullPath = parentPath.endsWith("/") ? parentPath + form.name : parentPath + "/" + form.name;
             NodeMode mode = form.mode != null ? NodeMode.valueOf(form.mode.toUpperCase()) : NodeMode.PERSISTENT;
             zookeeperDomainService.create(serverId, fullPath, form.data != null ? form.data : "", mode);
@@ -79,7 +93,7 @@ public class NodeApi {
         } catch (Exception e) {
             LOG.error("Failed to create node", e);
             ctx.status(500);
-            ctx.json(Map.of("error", e.getMessage()));
+            ctx.json(Map.of("error", "Failed to create node"));
         }
     }
 
@@ -95,7 +109,7 @@ public class NodeApi {
         } catch (Exception e) {
             LOG.error("Failed to update node", e);
             ctx.status(500);
-            ctx.json(Map.of("error", e.getMessage()));
+            ctx.json(Map.of("error", "Failed to update node"));
         }
     }
 
@@ -113,7 +127,8 @@ public class NodeApi {
                     ctx.json(Map.of("deleted", form.paths));
                     return;
                 }
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                LOG.debug("Failed to parse delete body as DeleteNodeForm", e);
             }
             ctx.status(400);
             ctx.json(Map.of("error", "path query parameter or paths in body required"));
@@ -124,7 +139,7 @@ public class NodeApi {
             ctx.json(Map.of("deleted", path));
         } catch (Exception e) {
             ctx.status(500);
-            ctx.json(Map.of("error", e.getMessage()));
+            ctx.json(Map.of("error", "Failed to delete node"));
         }
     }
 
@@ -151,34 +166,62 @@ public class NodeApi {
             ctx.json(vos);
         } catch (Exception e) {
             ctx.status(500);
-            ctx.json(Map.of("error", e.getMessage()));
+            ctx.json(Map.of("error", "Search failed"));
         }
     }
+
+    /**
+     * POST /api/nodes/{serverId}/4lc
+     */
     public void executeFourLetterCmd(Context ctx) {
         String serverId = ctx.pathParam("serverId");
         try {
-            @SuppressWarnings("unchecked")
-            Map<String, String> body = ctx.bodyAsClass(Map.class);
-            String command = body.get("command");
-            if (command == null || command.length() != 4) {
+            String command;
+            Object body = ctx.bodyAsClass(Object.class);
+            if (body instanceof Map) {
+                Object cmd = ((Map<?, ?>) body).get("command");
+                if (cmd instanceof String s && !s.isBlank()) {
+                    command = s.trim().toLowerCase();
+                } else {
+                    ctx.status(400);
+                    ctx.json(Map.of("error", "command must be a non-empty string"));
+                    return;
+                }
+            } else {
+                ctx.status(400);
+                ctx.json(Map.of("error", "Request body must be a JSON object"));
+                return;
+            }
+
+            if (command.length() != 4) {
                 ctx.status(400);
                 ctx.json(Map.of("error", "command must be 4 characters"));
                 return;
             }
+            if (!ALLOWED_4LC.contains(command)) {
+                ctx.status(400);
+                ctx.json(Map.of("error", "Unknown or unsupported 4-letter command: " + command));
+                return;
+            }
+
             var serverConfig = configurationDomainService.getById(serverId).orElseThrow();
             String hostToConnect;
             if (serverConfig.getSshTunnelEnabled()) {
-                hostToConnect = "localhost:" + serverConfig.getPort();
+                // Connect via SSH tunnel's local forwarded address
+                var sshTunnel = serverConfig.getSshTunnel();
+                String remoteHost = sshTunnel.getRemoteHost() != null && !sshTunnel.getRemoteHost().isBlank()
+                        ? sshTunnel.getRemoteHost() : "localhost";
+                hostToConnect = remoteHost + ":" + serverConfig.getPort();
             } else {
                 hostToConnect = serverConfig.getHost() + ":" + serverConfig.getPort();
             }
             String result = zookeeperDomainService.execute4LetterCommand(
-                serverConfig.getId(), hostToConnect, command.toLowerCase());
+                serverConfig.getId(), hostToConnect, command);
             ctx.json(Map.of("command", command, "result", result));
         } catch (Exception e) {
             LOG.error("Failed to execute 4LC for server {}", serverId, e);
             ctx.status(500);
-            ctx.json(Map.of("error", e.getMessage()));
+            ctx.json(Map.of("error", "Failed to execute command"));
         }
     }
 

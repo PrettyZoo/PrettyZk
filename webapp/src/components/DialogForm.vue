@@ -10,7 +10,7 @@
           <label>{{ field.label }}</label>
           <input v-if="field.type === 'text'" v-model="formData[field.key]" type="text" :placeholder="field.placeholder" />
           <select v-else-if="field.type === 'select'" v-model="formData[field.key]">
-            <option v-for="opt in field.options" :key="opt.value || opt" :value="opt.value || opt">{{ opt.label || opt }}</option>
+            <option v-for="opt in field.options" :key="opt.value ?? opt" :value="opt.value ?? opt">{{ opt.label ?? opt }}</option>
           </select>
           <textarea v-else-if="field.type === 'textarea'" v-model="formData[field.key]" :placeholder="field.placeholder" rows="4"></textarea>
         </div>

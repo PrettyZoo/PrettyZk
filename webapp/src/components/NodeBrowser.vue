@@ -139,7 +139,7 @@ function ctxMenuDelete() {
     selectedNode.value = null; selectedNodePath.value = null
     api.deleteNode(props.serverId, n.path).then(() => {
       window.__toast?.(t('node.deleted'), 'success'); refreshTree()
-    }).catch(e => { window.__toast?.('Failed: ' + e.message, 'error') })
+    }).catch(e => { window.__toast?.(t('node.deleteFailed', { msg: e.message }), 'error') })
   })
 }
 
@@ -180,28 +180,28 @@ async function loadTree(path = '/') {
     }
     return data
   } catch (e) {
-    window.__toast?.('Failed to load: ' + e.message, 'error')
+    window.__toast?.(t('node.loadFailed', { msg: e.message }), 'error')
     return null
   } finally { loading.value = false }
 }
 
 function loadRoot() { loadTree('/'); selectedNodePath.value = null; selectedNode.value = null }
-function sync() { refreshTree(); window.__toast?.('Synced', 'success') }
+function sync() { refreshTree(); window.__toast?.(t('node.synced'), 'success') }
 
 async function onSelectNode(node) {
   selectedNodePath.value = node.path
   try {
     const data = await api.listNodes(props.serverId, node.path)
     selectedNode.value = data; nodeData.value = data.data || ''
-  } catch (e) { window.__toast?.('Failed to load: ' + e.message, 'error') }
+  } catch (e) { window.__toast?.(t('node.loadFailed', { msg: e.message }), 'error') }
 }
 
 async function saveData(data) {
   saving.value = true
   try {
     await api.updateNode(props.serverId, { path: selectedNodePath.value, data: data || nodeData.value })
-    window.__toast?.('Data saved', 'success')
-  } catch (e) { window.__toast?.('Failed to save: ' + e.message, 'error') }
+    window.__toast?.(t('node.dataSaved'), 'success')
+  } catch (e) { window.__toast?.(t('node.saveFailed', { msg: e.message }), 'error') }
   finally { saving.value = false }
 }
 
@@ -209,10 +209,11 @@ function deleteSelected() {
   if (!selectedNodePath.value) return
   showDialog(t('node.deleteNode'), t('node.deleteConfirm', { path: selectedNodePath.value })).then(ok => {
     if (!ok) return
+    const pathToDelete = selectedNodePath.value
     selectedNode.value = null; selectedNodePath.value = null
-    api.deleteNode(props.serverId, selectedNodePath.value).then(() => {
+    api.deleteNode(props.serverId, pathToDelete).then(() => {
       window.__toast?.(t('node.deleted'), 'success'); refreshTree()
-    }).catch(e => { window.__toast?.('Failed: ' + e.message, 'error') })
+    }).catch(e => { window.__toast?.(t('node.deleteFailed', { msg: e.message }), 'error') })
   })
 }
 
@@ -223,12 +224,12 @@ async function onAddNodeConfirm(form) {
   try {
     await api.createNode(props.serverId, form)
     window.__toast?.(t('node.created'), 'success'); refreshTree()
-  } catch (e) { window.__toast?.('Failed: ' + e.message, 'error') }
+  } catch (e) { window.__toast?.(t('node.deleteFailed', { msg: e.message }), 'error') }
 }
 
 async function runFourLetterCmd() {
   const cmd = fourLetterCmd.value.trim().toLowerCase()
-  if (!cmd || cmd.length !== 4) { window.__toast?.('Enter 4-letter command', 'error'); return }
+  if (!cmd || cmd.length !== 4) { window.__toast?.(t('node.enterCmd'), 'error'); return }
   fourLetterOutput.value = `Executing "${cmd}"...`
   try {
     const res = await api.execute4LC(props.serverId, cmd)

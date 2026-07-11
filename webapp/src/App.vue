@@ -61,8 +61,8 @@ const NodeBrowser = defineAsyncComponent(() => import('./components/NodeBrowser.
 const LogViewer = defineAsyncComponent(() => import('./components/LogViewer.vue'))
 
 const currentView = ref('welcome')
-const activeServerId = ref(null)
-const editServerId = ref(null)
+const activeServerId = ref<string | null>(null)
+const editServerId = ref<string | null>(null)
 const currentLocale = ref(getLocale())
 
 function onToggleLang() {
@@ -73,11 +73,14 @@ function onToggleLang() {
   api.updateLocale(state.config.locale).catch(e => console.warn(e))
 }
 
-const dialog = reactive({
+const dialog = reactive<{
+  show: boolean; title: string; message: string; resolve: ((v: boolean) => void) | null
+}>({
   show: false, title: '', message: '', resolve: null
 })
-window.__dialog = dialog
-window.__toast = null
+// Legacy globals for cross-component toast/dialog access
+;(window as any).__dialog = dialog
+;(window as any).__toast = null
 
 onMounted(async () => {
   try { state.servers = (await api.listServers()) || [] } catch (e) { console.warn('load servers', e) }
@@ -94,7 +97,7 @@ onMounted(async () => {
   } catch (e) { console.warn('load config', e) }
 })
 
-function onSelectServer(id) {
+function onSelectServer(id: string) {
   activeServerId.value = id
   currentView.value = 'node-browser'
 }
@@ -104,20 +107,20 @@ function onAddServer() {
   currentView.value = 'server-form'
 }
 
-function onEditServer(id) {
+function onEditServer(id: string) {
   editServerId.value = id
   currentView.value = 'server-form'
 }
 
-async function onDeleteServer(id) {
-  const ok = await showDialog('Delete Server', 'Are you sure you want to delete this server?')
+async function onDeleteServer(id: string) {
+  const ok = await showDialog(t('server.deleteTitle'), t('server.deleteConfirm'))
   if (!ok) return
   try {
     await api.deleteServer(id)
     state.servers = (await api.listServers()) || []
-    window.__toast?.('Server deleted', 'success')
-  } catch (e) {
-    window.__toast?.('Failed to delete: ' + e.message, 'error')
+    ;(window as any).__toast?.(t('server.deleted'), 'success')
+  } catch (e: any) {
+    ;(window as any).__toast?.(t('server.deleteFailed', { msg: e.message }), 'error')
   }
 }
 
@@ -130,7 +133,7 @@ function onToggleTheme() {
   api.updateTheme(newTheme).catch(e => console.warn(e))
 }
 
-function onServerSaved(id) {
+function onServerSaved(id: string) {
   activeServerId.value = id
   currentView.value = 'node-browser'
   api.listServers().then(s => state.servers = s || []).catch(e => console.warn(e))
@@ -144,13 +147,13 @@ async function onConfigExport() {
     const a = document.createElement('a')
     a.href = url; a.download = 'prettyzk-config.json'; a.click()
     URL.revokeObjectURL(url)
-    window.__toast?.('Config exported', 'success')
-  } catch (e) {
-    window.__toast?.('Export failed: ' + e.message, 'error')
+    ;(window as any).__toast?.(t('config.exportSuccess'), 'success')
+  } catch (e: any) {
+    ;(window as any).__toast?.(t('config.exportFailed', { msg: e.message }), 'error')
   }
 }
 
-function onFontSizeChange(val) {
+function onFontSizeChange(val: number) {
   state.config.fontSize = val
   document.documentElement.style.fontSize = val + 'px'
 }
@@ -163,7 +166,7 @@ function onBackFromNodeBrowser() {
 function onDialogConfirm() { dialog.resolve?.(true); dialog.show = false }
 function onDialogCancel() { dialog.resolve?.(false); dialog.show = false }
 
-function showDialog(title, message) {
+function showDialog(title: string, message: string): Promise<boolean> {
   return new Promise(resolve => {
     dialog.title = title
     dialog.message = message

@@ -1,23 +1,50 @@
 <template>
   <div class="dialog-overlay" @click.self="$emit('cancel')">
-    <div class="dialog-box">
+    <div
+      class="dialog-box"
+      role="dialog"
+      aria-modal="true"
+      :aria-labelledby="'dialog-title-' + _uid"
+      :aria-describedby="'dialog-body-' + _uid"
+    >
       <div class="dialog-header">
-        <h3>{{ title }}</h3>
-        <button class="dialog-close" @click="$emit('cancel')">&times;</button>
+        <h3 :id="'dialog-title-' + _uid">{{ title }}</h3>
+        <button class="dialog-close" @click="$emit('cancel')" aria-label="Close">&times;</button>
       </div>
-      <div class="dialog-body">{{ message }}</div>
+      <div class="dialog-body" :id="'dialog-body-' + _uid">{{ message }}</div>
       <div class="dialog-footer">
         <button class="btn btn-secondary" @click="$emit('cancel')">{{ t('common.cancel') }}</button>
-        <button class="btn btn-primary" @click="$emit('confirm')">{{ t('common.confirm') }}</button>
+        <button class="btn btn-primary" ref="confirmBtn" @click="$emit('confirm')">{{ t('common.confirm') }}</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
 import { t } from '../i18n.ts'
+
 defineProps({ title: String, message: String })
 defineEmits(['confirm', 'cancel'])
+
+const confirmBtn = ref<HTMLElement | null>(null)
+
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    // emit cancel directly via the first close button's click
+    const closeBtn = document.querySelector('.dialog-close') as HTMLElement
+    closeBtn?.click()
+  }
+}
+
+onMounted(() => {
+  confirmBtn.value?.focus()
+  document.addEventListener('keydown', onKeydown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', onKeydown)
+})
 </script>
 
 <style scoped>

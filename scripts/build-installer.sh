@@ -4,7 +4,9 @@ set -e
 export PATH="$HOME/.cargo/bin:$PATH"
 cd "$(dirname "$0")/.."
 
-echo "=== PrettyZk v3.0.0 Installer Build ==="
+# Derive version from git tag, fallback to env var or default
+VERSION="${VERSION:-$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo '3.0.0')}"
+echo "=== PrettyZk v${VERSION} Installer Build ==="
 
 echo "[1/6] Building frontend..."
 cd webapp && npm install --silent && npm run build --silent && cd ..
@@ -15,7 +17,7 @@ echo "[2/6] Building backend..."
 echo "[3/6] Creating minimal JRE..."
 rm -rf build/jlink-runtime
 jlink --module-path "$JAVA_HOME/jmods" \
-  --add-modules java.base,java.desktop,java.logging,java.naming,java.management,java.instrument,java.security.jgss,java.net.http,java.scripting,java.xml,jdk.unsupported,jdk.security.auth \
+  --add-modules java.base,java.desktop,java.logging,java.naming,java.management,java.instrument,java.security.jgss,java.net.http,java.scripting,java.xml,jdk.unsupported \
   --strip-debug --no-header-files --no-man-pages \
   --output build/jlink-runtime
 rm -rf build/jlink-runtime/legal
@@ -39,8 +41,8 @@ if [ ! -f "$APP/Contents/Info.plist" ]; then
 <key>CFBundleExecutable</key><string>prettyzoo</string>
 <key>CFBundleIdentifier</key><string>cc.cc1234.prettyzk</string>
 <key>CFBundleName</key><string>PrettyZk</string>
-<key>CFBundleVersion</key><string>3.0.0</string>
-<key>CFBundleShortVersionString</key><string>3.0.0</string>
+<key>CFBundleVersion</key><string>${VERSION}</string>
+<key>CFBundleShortVersionString</key><string>${VERSION}</string>
 <key>CFBundleIconFile</key><string>icon.icns</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>LSMinimumSystemVersion</key><string>12.0</string>
@@ -58,19 +60,19 @@ mkdir -p "$DMG_DIR"
 cp -R "$APP" "$DMG_DIR/PrettyZk.app"
 ln -s /Applications "$DMG_DIR/Applications"
 
-rm -f PrettyZk_3.0.0.dmg
+rm -f "PrettyZk_${VERSION}.dmg"
 hdiutil create -volname "PrettyZk" -srcfolder "$DMG_DIR" \
-  -ov -format UDZO PrettyZk_3.0.0.dmg 2>/dev/null
+  -ov -format UDZO "PrettyZk_${VERSION}.dmg" 2>/dev/null
 rm -rf "$DMG_DIR"
 
 echo ""
 echo "==========================================="
 echo "  Build Complete!"
-echo "  Installer: $(pwd)/PrettyZk_3.0.0.dmg"
-echo "  Size: $(du -sh PrettyZk_3.0.0.dmg | cut -f1)"
+echo "  Installer: $(pwd)/PrettyZk_${VERSION}.dmg"
+echo "  Size: $(du -sh PrettyZk_${VERSION}.dmg | cut -f1)"
 echo "==========================================="
 echo ""
 echo "Install:"
-echo "  open PrettyZk_3.0.0.dmg"
+echo "  open PrettyZk_${VERSION}.dmg"
 echo "  Drag PrettyZk.app to Applications"
 echo "  Then: xattr -cr /Applications/PrettyZk.app"

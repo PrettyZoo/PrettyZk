@@ -57,7 +57,7 @@ task buildMergedZookeeperJar(type: Jar, dependsOn: unzipZookeeper) {
                 "Implementation-Vendor-Id": "org.apache.zookeeper",
                 "Implementation-Vendor": "The Apache Software Foundation",
                 "Build-Jdk": "1.8.0_241",
-                "Specification-Version": " 3.6",
+                "Specification-Version": "3.6",
                 "Implementation-URL: http://zookeeper.apache.org/",
         )
     }

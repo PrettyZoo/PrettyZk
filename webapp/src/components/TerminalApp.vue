@@ -15,6 +15,10 @@ let term = null
 let fitAddon = null
 let ws = null
 let buffer = ''
+let reconnectTimer = null
+let reconnectAttempts = 0
+const MAX_RECONNECT = 5
+const RECONNECT_DELAY = 2000
 
 onMounted(() => {
   term = new Terminal({
@@ -50,17 +54,37 @@ onMounted(() => {
         buffer = buffer.slice(0, -1)
         term.write('\b \b')
       }
-    } else if (!domEvent.ctrlKey && !domEvent.altKey && key.length === 1) {
-      buffer += key
-      term.write(key)
+    } else if (domEvent.ctrlKey && !domEvent.altKey && !domEvent.metaKey) {
+      // Ctrl+C (SIGINT), Ctrl+D (EOF), etc. — send immediately, don't buffer
+      sendCommand(key)
+    } else if (!domEvent.altKey && !domEvent.metaKey) {
+      if (domEvent.key === 'Tab') {
+        buffer += '\t'
+        term.write('\t')
+      } else if (key.length === 1) {
+        buffer += key
+        term.write(key)
+      }
     }
   })
 
   connectWs()
 })
 
+// Reconnect when serverId changes (e.g., user switches servers in parent)
+watch(() => props.serverId, (newId) => {
+  term.clear()
+  term.write('PrettyZk Terminal\r\n')
+  buffer = ''
+  reconnectAttempts = 0
+  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null }
+  if (ws) { ws.onclose = null; ws.close() }
+  connectWs()
+})
+
 onUnmounted(() => {
-  if (ws) ws.close()
+  if (reconnectTimer) clearTimeout(reconnectTimer)
+  if (ws) { ws.onclose = null; ws.close() }
   if (term) term.dispose()
 })
 
@@ -90,6 +114,17 @@ function connectWs() {
 
   ws.onclose = () => {
     term.write('\r\n\x1b[31mDisconnected\x1b[0m\r\n')
+    if (reconnectAttempts < MAX_RECONNECT) {
+      const delay = Math.min(RECONNECT_DELAY * (reconnectAttempts + 1), 10000)
+      term.write(`\x1b[33mReconnecting in ${delay / 1000}s...\x1b[0m\r\n`)
+      reconnectTimer = setTimeout(() => {
+        reconnectAttempts++
+        reconnectTimer = null
+        connectWs()
+      }, delay)
+    } else {
+      term.write('\r\n\x1b[31mMax reconnect attempts reached. Switch tab to retry.\x1b[0m\r\n')
+    }
   }
 
   ws.onerror = () => term.write('\r\n\x1b[31mWebSocket error\x1b[0m\r\n')

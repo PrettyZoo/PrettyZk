@@ -28,7 +28,8 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - run: npm install -g @tauri-apps/cli@latest
+      - run: npm install -g @tauri-apps/cli@2
+
       - run: choco install wixtoolset nsis -y --no-progress
 
       - uses: actions/cache@v4
@@ -39,6 +40,8 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
+            webapp/node_modules
+            ~/.npm
           key: win-x64-${{ hashFiles('**/*.gradle*', 'src-tauri/Cargo.lock', 'src-tauri/tauri.conf.json') }}
 
       - run: cd webapp && npm install && npm run build
@@ -57,14 +60,18 @@ jobs:
       - name: Build combined installer
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
           $msi = Get-ChildItem src-tauri/target/release/bundle/msi/*.msi | Select-Object -First 1
+          if (-not $msi) { Write-Error "MSI not found"; exit 1 }
           New-Item -ItemType Directory -Force -Path dist/stage
           Copy-Item $msi.FullName dist/stage/app.msi
           Copy-Item build/jlink-runtime dist/stage/runtime -Recurse -Force
           New-Item -ItemType Directory -Force -Path dist/stage/app/lib
           Copy-Item app/build/install/app/lib/*.jar dist/stage/app/lib/
           Copy-Item scripts/installer.nsi dist/
-          & "C:\Program Files (x86)\NSIS\makensis.exe" /V1 dist/installer.nsi
+          $ver = "${{ github.ref_name }}" -replace '^v', ''
+          & "C:\Program Files (x86)\NSIS\makensis.exe" /V1 "-DVERSION=$ver" dist/installer.nsi
+          if ($LASTEXITCODE -ne 0) { Write-Error "NSIS compilation failed"; exit 1 }
           Copy-Item dist/PrettyZk-Setup.exe $env:GITHUB_WORKSPACE/
 
       - uses: softprops/action-gh-release@v2

@@ -23,6 +23,10 @@ window.__toast = (message, type = 'info', duration = 3000) => {
     if (idx >= 0) toasts.value.splice(idx, 1)
   }, duration)
 }
+onUnmounted(() => {
+  timers.forEach(t => clearTimeout(t))
+  timers.length = 0
+})
 </script>
 
 <style scoped>

@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-    <img src="https://img.shields.io/badge/language-Java%2017%20%2B%20Vue%203-blue" alt="language">
+    <img src="https://img.shields.io/badge/language-Java%2021%20%2B%20Vue%203-blue" alt="language">
     <img src="https://img.shields.io/badge/license-Apache%202.0-green" alt="license">
 </p>
 
@@ -32,20 +32,22 @@
 
 ### 环境要求
 
-- Java 17+
+- Java 21+
 - Rust（构建 Tauri 桌面壳需要）
+- WebView2（仅 Windows，MSI 安装包会自动安装）
 
 ### 构建并运行
 
 ```bash
-# 1. 构建后端分发
+# 1. 构建前端
+cd webapp && npm install && npm run build
+
+# 2. 构建后端分发
 ./gradlew :app:installDist
 
-# 2. 构建桌面应用
+# 3. 构建并启动桌面应用
 cd src-tauri
 cargo build --release
-
-# 3. 启动
 ./target/release/prettyzoo
 ```
 
@@ -56,16 +58,19 @@ cargo build --release
 cd webapp && npm install && npm run build
 
 # 启动后端
-cd .. && ./bin/prettyzoo
+cd .. && app/build/install/app/bin/app
 # 浏览器打开 http://127.0.0.1:{port} 调试
 ```
 
 ### 打包安装程序
 
 ```bash
-cd src-tauri
-cargo tauri build
-# 安装包在 src-tauri/target/release/bundle/
+# macOS
+./scripts/build-installer.sh
+
+# Windows（需要 NSIS 和 WiX Toolset）
+cd src-tauri && npx tauri build
+# 安装包在 src-tauri/target/release/bundle/msi/
 ```
 
 ## 📦 技术栈

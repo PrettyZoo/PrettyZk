@@ -10,6 +10,9 @@ import net.schmizz.sshj.transport.verification.PromiscuousVerifier;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Builder
 @Getter
@@ -17,26 +20,23 @@ import java.net.ServerSocket;
 public class SSHTunnel {
 
     private String localhost;
-
     private int localPort;
-
     private String sshHost;
-
     private int sshPort;
-
     private String sshUsername;
-
     private String sshPassword;
-
     private String remoteHost;
-
     private int remotePort;
-
     private String sshKeyFilePath;
 
-    private SSHClient sshClient;
+    // Cross-thread access: written in createAsync thread, read in close/isConnected
+    private volatile SSHClient sshClient;
+    private volatile ServerSocket proxySocket;
 
-    private ServerSocket proxySocket;
+    // Latch signaled when the port-forwarder starts listening
+    private final CountDownLatch connectedLatch = new CountDownLatch(1);
+    // Holds any exception from the forwarder thread
+    private final AtomicReference<IOException> forwarderError = new AtomicReference<>();
 
     public void createAsync() {
         try {
@@ -44,6 +44,7 @@ public class SSHTunnel {
             log.warn("SSH host key verification disabled - accepting all host keys. Consider enabling known_hosts for production.");
             sshClient.addHostKeyVerifier(new PromiscuousVerifier());
             sshClient.connect(getSshHost(), getSshPort());
+
             if (getSshPassword() != null && !getSshPassword().isBlank()) {
                 log.info("use password auth to create ssh-tunnel");
                 sshClient.authPassword(getSshUsername(), getSshPassword());
@@ -58,14 +59,19 @@ public class SSHTunnel {
             proxySocket = new ServerSocket();
             proxySocket.setReuseAddress(true);
             proxySocket.bind(new InetSocketAddress(localhost, localPort));
+
             new Thread(() -> {
                 try {
                     Parameters param = new Parameters(localhost, localPort, remoteHost, remotePort);
+                    // Signal that we're about to start listening
+                    connectedLatch.countDown();
                     sshClient.newLocalPortForwarder(param, proxySocket).listen();
                 } catch (IOException e) {
-                    throw new IllegalStateException(e.getMessage(), e);
+                    forwarderError.set(e);
+                    connectedLatch.countDown(); // unblock waiters even on failure
+                    log.error("SSH port forwarder failed", e);
                 }
-            }).start();
+            }, "ssh-tunnel-forwarder").start();
         } catch (IOException e) {
             if (e.getClass().getSimpleName().contains("Timeout")) {
                 throw new IllegalStateException("SSH connect error by timeout: " + sshHost, e);
@@ -80,17 +86,21 @@ public class SSHTunnel {
     }
 
     public void blockUntilConnected() {
-        // block until connected
         try {
-            int times = 1;
-            while (!isConnected() && times < 7) {
-                log.info("Try to connect SSH-Tunnel " + times + " times, tunnel = " + this);
-                Thread.sleep(1000);
-                times++;
+            if (!connectedLatch.await(7, TimeUnit.SECONDS)) {
+                this.close();
+                throw new IllegalStateException("connect SSH Tunnel timed out after 7s");
             }
-        } catch (Exception e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             this.close();
-            throw new IllegalStateException(e);
+            throw new IllegalStateException("Interrupted while waiting for SSH tunnel", e);
+        }
+
+        IOException err = forwarderError.get();
+        if (err != null) {
+            this.close();
+            throw new IllegalStateException("SSH port forwarder failed: " + err.getMessage(), err);
         }
 
         if (!isConnected()) {
@@ -100,7 +110,8 @@ public class SSHTunnel {
     }
 
     public boolean isConnected() {
-        return sshClient.isConnected();
+        SSHClient client = sshClient;
+        return client != null && client.isConnected();
     }
 
     public void close() {
@@ -108,7 +119,7 @@ public class SSHTunnel {
             try {
                 proxySocket.close();
             } catch (IOException e) {
-                throw new IllegalStateException(e);
+                log.debug("Error closing proxy socket", e);
             }
         }
 
@@ -116,7 +127,7 @@ public class SSHTunnel {
             try {
                 sshClient.close();
             } catch (IOException e) {
-                throw new IllegalStateException(e);
+                log.debug("Error closing SSH client", e);
             }
         }
     }

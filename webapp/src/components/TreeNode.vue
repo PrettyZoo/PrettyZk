@@ -114,7 +114,7 @@ async function reloadChildren() {
 }
 .tree-node:hover { background: var(--bg-hover); }
 .tree-node.selected { background: var(--bg-selected); border-left-color: var(--accent); }
-.tree-node.selected:hover { background: #d4e8ef; }
+.tree-node.selected:hover { background: var(--bg-selected); filter: brightness(1.1); }
 .tree-node.ephemeral { color: var(--node-ephemeral); }
 .tree-arrow { width: 16px; text-align: center; flex-shrink: 0; font-size: 8px; color: var(--text-muted); cursor: pointer; transition: transform 0.15s, color 0.15s; }
 .tree-arrow:hover { color: var(--text-secondary); }

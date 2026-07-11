@@ -4,9 +4,8 @@
 **/build/**
 **/classes/**
 **/out/**
-lombok.config
+**/dist/
 node_modules
 target
-src-tauri/target/
-webapp/dist/
-webapp/node_modules/
+*.log
+.env*

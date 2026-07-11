@@ -1,13 +1,15 @@
 package cc.cc1234.core.zookeeper.entity;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 
 public class FourLetterCommand {
 
     private String host;
-
     private int port;
 
     public FourLetterCommand(String host, int port) {
@@ -16,41 +18,28 @@ public class FourLetterCommand {
     }
 
     public String request(String command) {
-        final Socket socket = new Socket();
-        try {
+        try (Socket socket = new Socket()) {
             socket.connect(new InetSocketAddress(host, port));
-            OutputStream outputStream = socket.getOutputStream();
-            outputStream.write(command.getBytes());
-            outputStream.flush();
-            return response(socket);
+            try (OutputStream outputStream = socket.getOutputStream()) {
+                outputStream.write(command.getBytes());
+                outputStream.flush();
+            }
+            return readResponse(socket);
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
     }
 
-    private String response(Socket client) {
-        try {
-            var reader = new BufferedReader(new InputStreamReader(client.getInputStream()));
-            var builder = new StringBuilder("");
+    private String readResponse(Socket socket) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+            var builder = new StringBuilder();
             String str;
             while ((str = reader.readLine()) != null) {
-                builder.append(str).append("\n");
+                builder.append(str).append('\n');
             }
-            cleanup(client);
             return builder.toString();
-        } catch (Exception e) {
+        } catch (IOException e) {
             throw new IllegalStateException(e);
         }
     }
-
-    private void cleanup(Closeable c) {
-        if (c != null) {
-            try {
-                c.close();
-            } catch (IOException e) {
-                // ignore
-            }
-        }
-    }
-
 }
