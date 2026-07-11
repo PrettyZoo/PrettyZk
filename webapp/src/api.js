@@ -48,3 +48,15 @@ export const api = {
 
   version: () => request('/api/version'),
 }
+
+export function updateLocale(locale) {
+  return fetchApi('/api/config/locale', { method: 'PUT', body: JSON.stringify({ locale }) })
+}
+
+export function exportConfig() {
+  return fetch('/api/config/export').then(r => r.json())
+}
+
+export function importConfig(json) {
+  return fetchApi('/api/config/import', { method: 'POST', body: json })
+}

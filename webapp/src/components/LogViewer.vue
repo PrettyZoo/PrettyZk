@@ -9,8 +9,8 @@
     </div>
     <div class="log-scroll" ref="logContainer">
       <div v-for="(line, i) in logs" :key="i" class="log-line">{{ line }}</div>
-      <div v-if="connected" class="log-line" style="color:var(--text-muted);font-size:11px">Streaming...</div>
-      <div v-else class="log-line" style="color:var(--text-muted)">Connecting to log stream...</div>
+      <div v-if="connected" class="log-line" style="color:var(--text-muted);font-size:11px">{{ t('log.streaming') }}</div>
+      <div v-else class="log-line" style="color:var(--text-muted)">Connecting...</div>
     </div>
   </div>
 </template>

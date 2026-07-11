@@ -42,7 +42,7 @@
               @select="onSelectNode"
               @node-ctx="onNodeContextMenu"
             />
-            <div v-if="connecting" class="tree-empty">Connecting...</div>
+            <div v-if="connecting" class="tree-empty">{{ t('node.connecting') }}</div>
             <div v-else-if="treeData.length === 0" class="tree-empty">{{ t('node.selectNode') }}</div>
           </div>
         </div>
@@ -270,32 +270,26 @@ async function connectAndLoad() {
 }
 
 let nodeWs = null
-let wsServerId = null
 
-watch(() => props.serverId, (newId, oldId) => {
+function connectWs(serverId) {
   if (nodeWs) { nodeWs.close(); nodeWs = null }
-  connectAndLoad()
-  // Reconnect node events WS
-  wsServerId = newId
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
   try {
-    nodeWs = new WebSocket(`${protocol}//${window.location.host}/ws/nodes/${encodeURIComponent(newId)}`)
+    nodeWs = new WebSocket(`${protocol}//${window.location.host}/ws/nodes/${encodeURIComponent(serverId)}`)
     nodeWs.onmessage = (e) => {
       try { const msg = JSON.parse(e.data); if (['added','updated','deleted'].includes(msg.type)) refreshTree() } catch (_) {}
     }
   } catch (e) { console.warn(e) }
+}
+
+watch(() => props.serverId, (newId) => {
+  connectAndLoad()
+  connectWs(newId)
 })
 
 onMounted(() => {
-  wsServerId = props.serverId
   connectAndLoad()
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  try {
-    nodeWs = new WebSocket(`${protocol}//${window.location.host}/ws/nodes/${encodeURIComponent(props.serverId)}`)
-    nodeWs.onmessage = (e) => {
-      try { const msg = JSON.parse(e.data); if (['added','updated','deleted'].includes(msg.type)) refreshTree() } catch (_) {}
-    }
-  } catch (e) { console.warn(e) }
+  connectWs(props.serverId)
 })
 
 onUnmounted(() => { if (nodeWs) { nodeWs.close(); nodeWs = null } })

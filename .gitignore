@@ -7,3 +7,6 @@
 lombok.config
 node_modules
 target
+src-tauri/target/
+webapp/dist/
+webapp/node_modules/
