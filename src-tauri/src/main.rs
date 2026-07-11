@@ -48,11 +48,11 @@ fn download_jre() -> bool {
 
     let script = format!(
         "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; \
-        $p='{}'; mkdir $p -Force; \
-        Invoke-WebRequest '{}' -OutFile '$p\\jre.zip' -UseBasicParsing; \
-        Expand-Archive '$p\\jre.zip' '$p\\extracted' -Force; \
-        $d=Get-ChildItem '$p\\extracted' -Directory | Select-Object -First 1; \
-        if($d){{Move-Item $d.FullName '{}' -Force}}",
+        $p='{0}'; mkdir $p -Force; \
+        Invoke-WebRequest '{1}' -OutFile \"$p\\jre.zip\" -UseBasicParsing; \
+        Expand-Archive \"$p\\jre.zip\" \"$p\\extracted\" -Force; \
+        $d=Get-ChildItem \"$p\\extracted\" -Directory | Select-Object -First 1; \
+        if($d){{Move-Item $d.FullName '{2}' -Force}}",
         tmp.to_str().unwrap(), url, jre_dir.to_str().unwrap()
     );
 

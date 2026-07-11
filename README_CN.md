@@ -46,7 +46,7 @@ cd src-tauri
 cargo build --release
 
 # 3. 启动
-./target/release/prettyzk
+./target/release/prettyzoo
 ```
 
 ### 开发模式（跳过 Tauri）
@@ -56,7 +56,7 @@ cargo build --release
 cd webapp && npm install && npm run build
 
 # 启动后端
-cd .. && ./bin/prettyzk
+cd .. && ./bin/prettyzoo
 # 浏览器打开 http://127.0.0.1:{port} 调试
 ```
 

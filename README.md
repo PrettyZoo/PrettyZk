@@ -46,7 +46,7 @@ cd src-tauri
 cargo build --release
 
 # 3. Run
-./target/release/prettyzk
+./target/release/prettyzoo
 ```
 
 ### Development (without Tauri)
@@ -56,7 +56,7 @@ cargo build --release
 cd webapp && npm install && npm run build
 
 # Start backend
-cd .. && ./bin/prettyzk
+cd .. && ./bin/prettyzoo
 # Open http://127.0.0.1:{port} in browser for dev
 ```
 
