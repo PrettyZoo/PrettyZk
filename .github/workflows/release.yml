@@ -35,14 +35,23 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache
+      - name: Cache (Gradle only)
         uses: actions/cache@v4
         with:
           path: |
-            ~/.gradle/caches ~/.gradle/wrapper
-            ~/.cargo/registry ~/.cargo/git
-            src-tauri/target
-          key: ${{ runner.os }}-${{ hashFiles('**/*.gradle*', 'src-tauri/Cargo.lock', 'webapp/package-lock.json') }}
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+
+      - name: Cache Cargo (dependencies only, not build output)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target/release/deps
+            src-tauri/target/release/.fingerprint
+          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
 
       - name: Install Tauri CLI
         run: npm install -g @tauri-apps/cli@latest
@@ -68,14 +77,17 @@ jobs:
             --no-header-files --no-man-pages --output build/jlink-runtime
           rm -rf build/jlink-runtime/legal
 
-      - name: Stage JRE (overwrites .gitkeep placeholder)
+      - name: Stage JRE
         run: |
           rm -rf src-tauri/resources
           mkdir -p src-tauri/resources/runtime src-tauri/resources/app/lib
           cp -R build/jlink-runtime/* src-tauri/resources/runtime/
           cp app/build/install/app/lib/*.jar src-tauri/resources/app/lib/
 
-      - name: Tauri build (resources/** already matches committed files)
+      - name: Touch config to invalidate build.rs cache
+        run: touch src-tauri/tauri.conf.json
+
+      - name: Tauri build
         run: cd src-tauri && npx tauri build
 
       - name: Custom DMG with drag-install (macOS)
