@@ -41,6 +41,7 @@ public class SSHTunnel {
     public void createAsync() {
         try {
             sshClient = new SSHClient();
+            log.warn("SSH host key verification disabled - accepting all host keys. Consider enabling known_hosts for production.");
             sshClient.addHostKeyVerifier(new PromiscuousVerifier());
             sshClient.connect(getSshHost(), getSshPort());
             if (getSshPassword() != null && !getSshPassword().isBlank()) {

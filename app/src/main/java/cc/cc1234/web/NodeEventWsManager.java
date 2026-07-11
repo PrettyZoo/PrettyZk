@@ -34,6 +34,8 @@ public class NodeEventWsManager {
         }
     }
 
+    private static final com.fasterxml.jackson.databind.ObjectMapper JSON = new com.fasterxml.jackson.databind.ObjectMapper();
+
     /**
      * Broadcast a node event to all WebSocket subscribers of the given server.
      */
@@ -41,32 +43,27 @@ public class NodeEventWsManager {
         Set<WsContext> clients = subscribers.get(serverId);
         if (clients == null || clients.isEmpty()) return;
 
-        String json = String.format(
-            "{\"type\":\"%s\",\"path\":\"%s\",\"server\":\"%s\"}",
-            eventType,
-            escapeJson(event.getNode().getPath()),
-            escapeJson(serverId)
-        );
+        try {
+            var msg = new java.util.LinkedHashMap<String, String>();
+            msg.put("type", eventType);
+            msg.put("path", event.getNode().getPath());
+            msg.put("server", serverId);
+            String json = JSON.writeValueAsString(msg);
 
-        for (WsContext ctx : clients) {
-            if (ctx.session.isOpen()) {
-                try {
-                    ctx.send(json);
-                } catch (Exception e) {
-                    LOG.warn("Failed to send WS event", e);
+            for (WsContext ctx : clients) {
+                if (ctx.session.isOpen()) {
+                    try {
+                        ctx.send(json);
+                    } catch (Exception e) {
+                        LOG.warn("Failed to send WS event", e);
+                        clients.remove(ctx);
+                    }
+                } else {
                     clients.remove(ctx);
                 }
-            } else {
-                clients.remove(ctx);
             }
+        } catch (Exception e) {
+            LOG.warn("Failed to serialize WS event", e);
         }
-    }
-
-    private static String escapeJson(String s) {
-        if (s == null) return "";
-        return s.replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r");
     }
 }

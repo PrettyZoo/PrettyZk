@@ -67,10 +67,10 @@ public class Application {
 
         if (webMode) {
             // Web deployment mode: logs URL, externally accessible
-            LOG.info("=============================================");
-            LOG.info("  PrettyZk Web Server started");
-            LOG.info("  Listen on http://{}:{}", host, port);
-            LOG.info("=============================================");
+            LOG.warn("=============================================");
+            LOG.warn("  WARNING: Web server exposed on {}:{}", host, port);
+            LOG.warn("  No authentication - anyone can access ZooKeeper");
+            LOG.warn("=============================================");
         } else {
             // Desktop mode: print URL for Tauri/Electron shell
             LOG.info("PrettyZk started on http://127.0.0.1:{}", port);

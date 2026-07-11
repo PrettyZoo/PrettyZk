@@ -10,6 +10,8 @@ import io.javalin.http.staticfiles.Location;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
+
 public class PrettyZkWebServer {
 
     private static final Logger LOG = LoggerFactory.getLogger(PrettyZkWebServer.class);
@@ -55,15 +57,16 @@ public class PrettyZkWebServer {
             });
         });
 
-        registerRoutes();
-
-        app.before(ctx -> {
-            ctx.header("Access-Control-Allow-Origin", "*");
-            ctx.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-            ctx.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        // Global exception handler
+        app.exception(Exception.class, (e, ctx) -> {
+            LOG.error("Unhandled exception in {} {}", ctx.method(), ctx.path(), e);
+            ctx.status(500);
+            ctx.json(Map.of("error", e.getMessage() != null ? e.getMessage() : "Internal server error"));
         });
+
+        registerRoutes();
         app.start(host, port);
-        LOG.info("PrettyZk web server started at http://{}:{}", host, port);
+        LOG.info("PrettyZk server started on http://{}:{}", host, port);
     }
 
     public int getPort() { return app != null ? app.port() : -1; }
@@ -98,7 +101,6 @@ public class PrettyZkWebServer {
         app.get("/api/nodes/{serverId}/search", nodeApi::searchNodes);
         app.post("/api/nodes/{serverId}/4lc", nodeApi::executeFourLetterCmd);
 
-        // Node events WebSocket for real-time ZK push
         app.ws("/ws/nodes/{serverId}", ws -> {
             ws.onConnect(ctx -> nodeEventWsManager.subscribe(ctx.pathParam("serverId"), ctx));
             ws.onClose(ctx -> {

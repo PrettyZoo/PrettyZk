@@ -1,7 +1,7 @@
 FROM eclipse-temurin:17-jre AS builder
 WORKDIR /app
 COPY . .
-RUN ./gradlew :app:jar -x test
+RUN ./gradlew :app:jar
 
 FROM eclipse-temurin:17-jre
 WORKDIR /app
