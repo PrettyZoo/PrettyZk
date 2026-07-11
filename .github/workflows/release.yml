@@ -28,13 +28,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '21'
+        with: { distribution: 'temurin', java-version: '21' }
 
       - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+        with: { node-version: '22' }
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -45,12 +42,12 @@ jobs:
             ~/.gradle/caches ~/.gradle/wrapper
             ~/.cargo/registry ~/.cargo/git
             src-tauri/target
-          key: ${{ runner.os }}-build-${{ hashFiles('**/*.gradle*', 'src-tauri/Cargo.lock', 'webapp/package-lock.json') }}
+          key: ${{ runner.os }}-${{ hashFiles('**/*.gradle*', 'src-tauri/Cargo.lock', 'webapp/package-lock.json') }}
 
       - name: Install Tauri CLI
         run: npm install -g @tauri-apps/cli@latest
 
-      - name: Install WiX (Windows)
+      - name: WiX (Windows)
         if: runner.os == 'Windows'
         run: choco install wixtoolset -y --no-progress
 
@@ -64,42 +61,28 @@ jobs:
       - name: Backend
         run: ./gradlew :app:installDist --no-daemon -x test
 
-      - name: Build JRE
+      - name: JRE
         run: |
           jlink --module-path "$JAVA_HOME/jmods" \
             --add-modules java.base,java.desktop,java.logging,java.naming,java.management,java.instrument,java.security.jgss,java.net.http,java.scripting,java.xml,jdk.unsupported \
             --no-header-files --no-man-pages --output build/jlink-runtime
           rm -rf build/jlink-runtime/legal
 
-      - name: Tauri build
+      - name: Tauri build (bundles JRE automatically via resources config)
         run: cd src-tauri && npx tauri build
 
-      - name: Inject JRE and create DMG (macOS)
+      - name: Custom DMG with Applications symlink (macOS)
         if: runner.os == 'macOS'
         run: |
           APP="src-tauri/target/release/bundle/macos/PrettyZk.app"
-          mkdir -p "$APP/Contents/Resources/runtime" "$APP/Contents/Resources/app/lib"
-          cp -R build/jlink-runtime/* "$APP/Contents/Resources/runtime/"
-          cp app/build/install/app/lib/*.jar "$APP/Contents/Resources/app/lib/"
           DMG_DIR="/tmp/prettyzk-dmg"
           mkdir -p "$DMG_DIR" && cp -R "$APP" "$DMG_DIR/PrettyZk.app" && ln -s /Applications "$DMG_DIR/Applications"
-          hdiutil create -volname "PrettyZk" -srcfolder "$DMG_DIR" -ov -format UDZO PrettyZk_3.0.0.dmg
-
-      - name: Package JRE for Windows
-        if: runner.os == 'Windows'
-        run: |
-          mkdir -p build/prettyzk-jre/runtime build/prettyzk-jre/app/lib
-          cp -R build/jlink-runtime/* build/prettyzk-jre/runtime/
-          cd build/prettyzk-jre && zip -r ../prettyzk-jre.zip . && cd ../..
-          ls -lh build/prettyzk-jre.zip
+          hdiutil create -volname "PrettyZk" -srcfolder "$DMG_DIR" -ov -format UDZO $GITHUB_WORKSPACE/PrettyZk_3.0.0.dmg
 
       - uses: softprops/action-gh-release@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: |
             PrettyZk_3.0.0.dmg
-            build/prettyzk-jre.zip
             src-tauri/target/release/bundle/**/*.${{ matrix.ext }}
           draft: true
           fail_on_unmatched_files: false

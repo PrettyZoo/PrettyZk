@@ -34,6 +34,12 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "externalBin": []
+    "externalBin": [],
+    "resources": [
+      "../build/jlink-runtime/bin/**",
+      "../build/jlink-runtime/lib/**",
+      "../build/jlink-runtime/conf/**",
+      "../app/build/install/app/lib/*.jar"
+    ]
   }
 }
