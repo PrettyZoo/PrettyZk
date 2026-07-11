@@ -72,21 +72,37 @@ fn download_jre() -> bool {
     }
 }
 
+fn check_java(cmd: &str) -> bool {
+    Command::new(cmd).arg("-version").stdout(Stdio::null()).stderr(Stdio::null()).status().map_or(false, |s| s.success())
+}
+
 fn find_java() -> String {
     let res = resource_dir();
     let bundled = res.join("runtime").join("bin").join("java");
     let bundled_exe = res.join("runtime").join("bin").join("java.exe");
 
+    // 1. Check bundled JRE
     if bundled.exists() { return bundled.to_str().unwrap().to_string(); }
     if bundled_exe.exists() { return bundled_exe.to_str().unwrap().to_string(); }
 
-    // Download JRE on Windows if not bundled
+    // 2. Check system Java 17+
+    if check_java("java") { return "java".to_string(); }
+    let java_home = std::env::var("JAVA_HOME").unwrap_or_default();
+    if !java_home.is_empty() {
+        let jh_java = std::path::Path::new(&java_home).join("bin").join("java");
+        let jh_java_exe = std::path::Path::new(&java_home).join("bin").join("java.exe");
+        if jh_java.exists() || jh_java_exe.exists() {
+            return jh_java.to_str().unwrap_or(&jh_java_exe.to_str().unwrap_or("java")).to_string();
+        }
+    }
+
+    // 3. Download JRE on Windows
     if cfg!(windows) && download_jre() {
         if bundled_exe.exists() { return bundled_exe.to_str().unwrap().to_string(); }
     }
 
     eprintln!("ERROR: Java not found. Please install Java 17+ from https://adoptium.net/");
-    eprintln!("Or make sure PrettyZk-jre.zip is available in the release assets.");
+    eprintln!("Or use PrettyZk-Setup.exe which includes Java automatically.");
     std::process::exit(1);
 }
 
