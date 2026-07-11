@@ -18,7 +18,7 @@ public class VersionChecker {
     private static final Logger logger = LoggerFactory.getLogger(VersionChecker.class);
 
     public static CompletableFuture<VersionResult> checkAsync() {
-        URI uri = URI.create("https://api.github.com/repos/vran-dev/PrettyZoo/releases/latest");
+        URI uri = URI.create("https://api.github.com/repos/PrettyZoo/PrettyZk/releases/latest");
         var request = HttpRequest.newBuilder(uri).build();
         var client = HttpClient.newHttpClient();
 

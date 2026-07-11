@@ -5,7 +5,7 @@
 <h1 align="center">PrettyZk</h1>
 
 <p align="center">
-    <b>PrettyZk</b> is a modern web-based ZooKeeper GUI client, evolved from <a href="https://github.com/vran-dev/PrettyZoo">PrettyZoo</a>.
+    <b>PrettyZk</b> is a modern web-based ZooKeeper GUI client, evolved from <a href="https://github.com/PrettyZoo/PrettyZk">PrettyZoo</a>.
 </p>
 
 <p align="center">
@@ -85,7 +85,7 @@ java -jar app/build/libs/app-*.jar --web --port 8080
 
 ## 🔄 Relationship to PrettyZoo
 
-PrettyZk is a complete rewrite of [PrettyZoo](https://github.com/vran-dev/PrettyZoo) (by vran-dev), which is now archived. Key differences:
+PrettyZk is a complete rewrite of [PrettyZoo](https://github.com/PrettyZoo/PrettyZk) (by vran-dev), which is now archived. Key differences:
 
 | | PrettyZoo (original) | PrettyZk |
 |---|---|---|
