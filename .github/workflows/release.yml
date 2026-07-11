@@ -47,6 +47,14 @@ jobs:
       - name: Install Tauri CLI
         run: npm install -g @tauri-apps/cli@latest
 
+      - name: Install WiX (Windows)
+        if: runner.os == 'Windows'
+        run: choco install wixtoolset -y --no-progress
+
+      - name: Disable macOS signing
+        if: runner.os == 'macOS'
+        run: echo "APPLE_SIGNING_ENABLED=false" >> $GITHUB_ENV
+
       - name: Frontend
         run: cd webapp && npm install && npm run build
 

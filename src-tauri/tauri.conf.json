@@ -6,7 +6,7 @@
   "build": {
     "frontendDist": "../app/src/main/resources/web",
     "devUrl": "http://localhost:5173",
-    "beforeBuildCommand": "cd /Users/dujie/IdeaProjects/PrettyZoo/webapp && npm run build"
+    "beforeBuildCommand": "cd ../webapp && npm run build"
   },
   "app": {
     "windows": [
