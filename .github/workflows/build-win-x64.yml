@@ -39,7 +39,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: win-x64-${{ hashFiles('**/*.gradle*', 'src-tauri/Cargo.lock', 'src-tauri/tauri.conf.json') }}
+          key: win-x64-${{ hashFiles('**/*.gradle*', 'src-tauri/Cargo.lock', 'src-tauri/tauri.win.conf.json') }}
 
       - run: cd webapp && npm install && npm run build
 

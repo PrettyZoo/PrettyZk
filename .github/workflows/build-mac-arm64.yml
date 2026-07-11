@@ -30,7 +30,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: mac-arm64-${{ hashFiles('**/*.gradle*', 'src-tauri/Cargo.lock', 'src-tauri/tauri.conf.json', 'src-tauri/resources/.gitkeep') }}
+          key: mac-arm64-${{ hashFiles('**/*.gradle*', 'src-tauri/Cargo.lock', 'src-tauri/tauri.conf.json') }}
 
       - run: cd webapp && npm install && npm run build
       - run: ./gradlew :app:installDist --no-daemon -x test
