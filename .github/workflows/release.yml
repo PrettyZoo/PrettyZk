@@ -11,17 +11,11 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            target: x86_64-apple-darwin
             bundle: dmg
             ext: dmg
           - os: windows-latest
-            target: x86_64-pc-windows-msvc
             bundle: msi
             ext: msi
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            bundle: deb
-            ext: deb
 
     runs-on: ${{ matrix.os }}
     defaults:
@@ -44,84 +38,45 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
 
-      - name: Cache Gradle
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2"
+
+      - name: Install Linux deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev \
+            librsvg2-dev patchelf libssl-dev libayatana-appindicator3-dev
+
+      - name: Cache
         uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-
-      - name: Cache Cargo
-        uses: actions/cache@v4
-        with:
-          path: |
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.toml') }}
+          key: ${{ runner.os }}-${{ hashFiles('**/*.gradle*', 'src-tauri/Cargo.toml') }}
 
       - name: Build frontend
         run: |
-          cd webapp
-          npm install
-          npm run build
+          cd webapp && npm install && npm run build
 
       - name: Build backend
         run: ./gradlew :app:installDist -x test
 
-      - name: Create JRE (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          jlink --module-path "$JAVA_HOME/jmods" \
-            --add-modules java.base,java.desktop,java.logging,java.naming,java.management,java.instrument,java.security.jgss,java.net.http,java.scripting,java.xml,jdk.unsupported,jdk.security.auth \
-            --strip-debug --no-header-files --no-man-pages \
-            --output build/jlink-runtime
-          rm -rf build/jlink-runtime/legal
-
-      - name: Build Tauri (macOS)
-        if: runner.os == 'macOS'
+      - name: Build Tauri
         run: |
           cd src-tauri
-          cargo build --release
-          # Inject JRE + backend into .app bundle
-          APP="target/release/bundle/macos/PrettyZk.app"
-          mkdir -p "$APP/Contents/Resources/runtime" "$APP/Contents/Resources/app/lib"
-          cp -R ../build/jlink-runtime/* "$APP/Contents/Resources/runtime/"
-          cp ../app/build/install/app/lib/*.jar "$APP/Contents/Resources/app/lib/"
-          # Create DMG with Applications symlink
-          DMG_DIR="/tmp/prettyzk-dmg"
-          mkdir -p "$DMG_DIR"
-          cp -R "$APP" "$DMG_DIR/PrettyZk.app"
-          ln -s /Applications "$DMG_DIR/Applications"
-          hdiutil create -volname "PrettyZk" -srcfolder "$DMG_DIR" \
-            -ov -format UDZO "../PrettyZk_3.0.0_x64.dmg"
-          rm -rf "$DMG_DIR"
+          cargo tauri build
 
-      - name: Build Tauri (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          cd src-tauri
-          cargo build --release
-          npx tauri build
-
-      - name: Build Tauri (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          cd src-tauri
-          cargo build --release
-          npx tauri build
-
-      - name: Upload artifacts
+      - name: Upload release assets
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: |
-            PrettyZk_3.0.0_x64.${{ matrix.ext }}
-            src-tauri/target/release/bundle/${{ matrix.bundle }}/PrettyZk_3.0.0_x64.${{ matrix.ext }}
+          files: src-tauri/target/release/bundle/${{ matrix.bundle }}/*
           draft: true
           fail_on_unmatched_files: false
         env:
