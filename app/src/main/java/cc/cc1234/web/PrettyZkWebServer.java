@@ -74,12 +74,11 @@ public class PrettyZkWebServer {
     public void stop() { if (app != null) app.stop(); }
 
     public void await() {
-        Thread t = new Thread(() -> {
-            try { Thread.currentThread().join(); }
-            catch (InterruptedException e) { Thread.currentThread().interrupt(); }
-        });
-        t.setDaemon(false); t.start();
-        try { t.join(); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        try {
+            Thread.currentThread().join();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private void registerRoutes() {
