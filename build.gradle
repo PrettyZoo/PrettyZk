@@ -44,7 +44,7 @@ subprojects {
         junitVersion = '4.12'
         zookeeperVersion = '3.6.4'
         curatorRecipesVersion = '5.4.0'
-        guavaVersion = '33.0.0-jre'
+        guavaVersion = '31.1-jre'
         sshjVersion = '0.34.0'
         javalinVersion = '6.4.0'
         commonsIoVersion = '2.10.0'
@@ -54,6 +54,8 @@ subprojects {
 
     dependencies {
         implementation group: 'org.slf4j', name: 'slf4j-api', version: "${slf4jVersion}"
+        // Java module system requires this for annotation processing with modern Guava
+        compileOnly 'org.jspecify:jspecify:1.0.0'
         implementation "org.apache.logging.log4j:log4j-api:${log4jVersion}"
         implementation "org.apache.logging.log4j:log4j-core:${log4jVersion}"
         implementation "org.apache.logging.log4j:log4j-slf4j2-impl:${log4jVersion}"

@@ -41,12 +41,29 @@
     </div>
 
     <div class="sidebar-footer">
-      <button class="footer-btn" @click="$emit('config-export')" :title="t('config.exportSuccess')">{{ t('sidebar.exp') }}</button>
-      <button class="footer-btn" @click="onImportConfig" :title="t('sidebar.imp')">{{ t('sidebar.imp') }}</button>
-      <button class="footer-btn" @click="$emit('logs')" title="Logs">📋 {{ t('sidebar.logs') }}</button>
-      <button class="footer-btn" @click="$emit('toggle-lang')" title="Switch Language">{{ locale === 'zh' ? 'English' : '中文' }}</button>
-      <button class="footer-btn" @click="showFontSlider = !showFontSlider" title="Font Size">🔤</button>
-      <button class="footer-btn" @click="$emit('toggle-theme')" title="Toggle Dark/Light">{{ isDark ? '☀️' : '🌙' }}</button>
+      <div class="footer-group">
+        <button class="footer-btn" @click="$emit('config-export')" :title="t('sidebar.exportTooltip')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 9 8 16"/><line x1="12" y1="9" x2="12" y2="21"/><line x1="4" y1="22" x2="20" y2="22"/></svg>
+        </button>
+        <button class="footer-btn" @click="onImportConfig" :title="t('sidebar.importTooltip')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 8 12 15 16 8"/><line x1="12" y1="3" x2="12" y2="15"/><line x1="4" y1="22" x2="20" y2="22"/></svg>
+        </button>
+      </div>
+      <div class="footer-group">
+        <button class="footer-btn" @click="$emit('logs')" :title="t('sidebar.logs')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </button>
+        <button class="footer-btn" @click="$emit('toggle-lang')" :title="locale === 'zh' ? 'English' : '中文'">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        </button>
+        <button class="footer-btn" @click="showFontSlider = !showFontSlider" title="Font Size">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+        </button>
+      </div>
+      <button class="footer-btn theme-btn" @click="$emit('toggle-theme')" :title="isDark ? 'Light Mode' : 'Dark Mode'">
+        <svg v-if="isDark" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+      </button>
     </div>
     <div v-if="showFontSlider" class="font-slider-panel">
       <input type="range" min="10" max="24" :value="fontSize" @input="onFontChange" class="font-slider" />
@@ -59,6 +76,7 @@
 import { ref, computed } from 'vue'
 import { t, getLocale } from '../i18n.ts'
 import { api } from '../api.ts'
+import { state } from '../main.ts'
 
 const props = defineProps({
   servers: { type: Array, default: () => [] },
@@ -94,7 +112,7 @@ function onFontChange(e) {
   emit('update:fontSize', val)
   api.updateFontSize(val).catch(() => {})
 }
-const isDark = computed(() => document.documentElement.getAttribute('data-theme') === 'dark')
+const isDark = computed(() => state.config.theme === 'dark')
 function showContextMenu(e, s) {}
 </script>
 
@@ -163,14 +181,20 @@ function showContextMenu(e, s) {}
 .server-del-btn:hover { color: var(--danger); background: var(--danger-light); }
 .server-empty { padding: 24px 16px; font-size: 12px; color: var(--text-muted); text-align: center; line-height: 1.6; }
 .sidebar-footer {
-  display: flex; border-top: 1px solid var(--border-color); padding: 8px 10px; gap: 4px;
+  display: flex; align-items: center;
+  border-top: 1px solid var(--border-color); padding: 6px 6px; gap: 2px;
+}
+.footer-group {
+  display: flex; gap: 2px;
 }
 .footer-btn {
-  flex: 1; padding: 7px 4px; border: none; border-radius: 6px;
+  width: 32px; height: 32px; border: none; border-radius: 6px;
   background: transparent; color: var(--sidebar-text); cursor: pointer;
-  font-size: 12px; text-align: center; transition: all 0.12s;
+  font-size: 12px; display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
 }
 .footer-btn:hover { background: var(--sidebar-hover); color: var(--text-primary); }
+.footer-btn.theme-btn { margin-left: auto; }
 .font-slider-panel { display:flex; align-items:center; gap:6px; padding:6px 12px; border-top:1px solid var(--border-color); background:var(--sidebar-bg); }
 .font-slider { flex:1; height:4px; cursor:pointer; accent-color:var(--accent); }
 .font-size-label { font-size:11px; color:var(--text-muted); min-width:30px; text-align:right; }

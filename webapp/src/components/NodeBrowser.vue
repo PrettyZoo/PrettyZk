@@ -90,7 +90,7 @@
           <input v-model="fourLetterCmd" type="text" maxlength="4" placeholder="stat" style="text-transform:lowercase" />
         </div>
         <button class="btn btn-primary" @click="runFourLetterCmd">{{ t('node.execute') }}</button>
-        <pre class="4lc-output">{{ fourLetterOutput }}</pre>
+        <pre class="cmd-output">{{ fourLetterOutput }}</pre>
       </div>
     </div>
   </div>
@@ -321,7 +321,7 @@ onUnmounted(() => { if (nodeWs) { nodeWs.close(); nodeWs = null } })
 .search-hit:hover { background:var(--bg-hover); }
 .tree-scroll { flex:1; overflow-y:auto; padding:4px 0; }
 .tree-empty { padding:20px; text-align:center; color:var(--text-muted); font-size:13px; }
-.4lc-output { margin-top:12px; padding:12px; background:var(--code-bg); border:1px solid var(--border-color); border-radius:6px; font-family:'SF Mono',Monaco,monospace; font-size:12px; white-space:pre-wrap; min-height:200px; overflow:auto; }
+.cmd-output { margin-top:12px; padding:12px; background:var(--code-bg); border:1px solid var(--border-color); border-radius:6px; font-family:'SF Mono',Monaco,monospace; font-size:12px; white-space:pre-wrap; min-height:200px; overflow:auto; }
 .ctx-menu { position:fixed; z-index:9998; background:var(--bg-primary); border:1px solid var(--border-color); border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.15); padding:4px; min-width:140px; }
 .ctx-item { padding:8px 14px; cursor:pointer; font-size:13px; border-radius:4px; color:var(--text-primary); }
 .ctx-item:hover { background:var(--bg-hover); }
