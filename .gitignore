@@ -6,3 +6,4 @@
 **/out/**
 lombok.config
 node_modules
+target
