@@ -47,13 +47,12 @@ fn download_jre() -> bool {
     eprintln!("JRE not found. Downloading from {}...", url);
 
     // Download with PowerShell (built into Windows)
+    let path = res.to_str().unwrap_or(".");
     let dl_script = format!(
-        "$p='{}'; $u='{}'; \
-        [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; \
-        Invoke-WebRequest -Uri $u -OutFile $p\\jre.tar.gz -UseBasicParsing; \
-        tar -xzf $p\\jre.tar.gz -C $p; \
-        Remove-Item $p\\jre.tar.gz",
-        res.to_str().unwrap_or(".")
+        "$p=\"{0}\"; Invoke-WebRequest -Uri \"{1}\" -OutFile \"$p\\jre.tar.gz\" \
+        -UseBasicParsing; if(Test-Path \"$p\\jre.tar.gz\"){{tar -xzf \"$p\\jre.tar.gz\" -C \"$p\"; \
+        Remove-Item \"$p\\jre.tar.gz\"}}",
+        path, url
     );
 
     let status = Command::new("powershell")
