@@ -32,7 +32,7 @@ fn download_jre() -> bool { true } // Bundled in .app on macOS
 #[cfg(target_os = "windows")]
 fn download_jre() -> bool {
     let res = resource_dir();
-    let url = "https://github.com/PrettyZoo/PrettyZk/releases/download/v3.0.0/PrettyZk-jre.zip";
+    let url = "https://github.com/PrettyZoo/PrettyZk/releases/download/v3.0.0/jre.zip";
     let zip_path = res.join("jre.zip");
 
     eprintln!("Downloading JRE from {}...", url);
