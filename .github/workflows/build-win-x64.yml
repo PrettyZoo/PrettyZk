@@ -16,18 +16,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
-
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-
       - uses: dtolnay/rust-toolchain@stable
-
       - run: npm install -g @tauri-apps/cli@latest
       - run: choco install wixtoolset -y --no-progress
 
@@ -39,28 +35,13 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: win-x64-${{ hashFiles('**/*.gradle*', 'src-tauri/Cargo.lock', 'src-tauri/tauri.win.conf.json') }}
+          key: win-x64-${{ hashFiles('**/*.gradle*', 'src-tauri/Cargo.lock', 'src-tauri/tauri.conf.json') }}
 
       - run: cd webapp && npm install && npm run build
+      - run: ./gradlew :app:installDist --no-daemon -x test
 
-      - name: Backend
-        run: ./gradlew :app:installDist --no-daemon -x test
-
-      - name: JRE
-        run: |
-          "$JAVA_HOME/bin/jlink" --module-path "$JAVA_HOME/jmods" \
-            --add-modules java.base,java.desktop,java.logging,java.naming,java.management,java.instrument,java.security.jgss,java.net.http,java.scripting,java.xml,jdk.unsupported \
-            --no-header-files --no-man-pages --output build/jlink-runtime
-          rm -rf build/jlink-runtime/legal
-
-      - name: Stage JRE into src-tauri/resources
-        run: |
-          mkdir -p src-tauri/resources/runtime src-tauri/resources/app/lib
-          cp -R build/jlink-runtime/* src-tauri/resources/runtime/
-          cp app/build/install/app/lib/*.jar src-tauri/resources/app/lib/
-
-      - name: Tauri build (MSI includes JRE via resources)
-        run: cd src-tauri && npx tauri build --config tauri.win.conf.json
+      - name: Tauri build
+        run: cd src-tauri && npx tauri build
 
       - uses: softprops/action-gh-release@v2
         with:
