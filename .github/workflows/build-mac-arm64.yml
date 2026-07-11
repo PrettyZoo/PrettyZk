@@ -21,7 +21,12 @@ jobs:
 
       - uses: actions/cache@v4
         with:
-          path: ~/.gradle/caches ~/.gradle/wrapper ~/.cargo/registry ~/.cargo/git src-tauri/target
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
           key: mac-arm64-${{ hashFiles('**/*.gradle*', 'src-tauri/Cargo.lock', 'src-tauri/tauri.conf.json') }}
 
       - run: cd webapp && npm install && npm run build
