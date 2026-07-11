@@ -41,7 +41,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, defineAsyncComponent, onMounted } from 'vue'
 import { state } from './main.js'
 import { api } from './api.js'
 import { setLocale, getLocale, t } from './i18n.js'
@@ -50,10 +50,12 @@ import './style.css'
 import Sidebar from './components/Sidebar.vue'
 import WelcomeScreen from './components/WelcomeScreen.vue'
 import ServerForm from './components/ServerForm.vue'
-import NodeBrowser from './components/NodeBrowser.vue'
-import LogViewer from './components/LogViewer.vue'
 import Toast from './components/Toast.vue'
 import Dialog from './components/Dialog.vue'
+
+// Large components loaded on demand
+const NodeBrowser = defineAsyncComponent(() => import('./components/NodeBrowser.vue'))
+const LogViewer = defineAsyncComponent(() => import('./components/LogViewer.vue'))
 
 const currentView = ref('welcome')
 const activeServerId = ref(null)

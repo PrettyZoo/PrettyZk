@@ -1,5 +1,6 @@
 package cc.cc1234.web.api;
 
+import cc.cc1234.core.configuration.service.ConfigurationDomainService;
 import cc.cc1234.core.zookeeper.service.ZookeeperDomainService;
 import cc.cc1234.specification.node.NodeMode;
 import cc.cc1234.specification.node.ZkNode;
@@ -15,9 +16,12 @@ public class NodeApi {
     private static final Logger LOG = LoggerFactory.getLogger(NodeApi.class);
 
     private final ZookeeperDomainService zookeeperDomainService;
+    private final ConfigurationDomainService configurationDomainService;
 
-    public NodeApi(ZookeeperDomainService zookeeperDomainService) {
+    public NodeApi(ZookeeperDomainService zookeeperDomainService,
+                   ConfigurationDomainService configurationDomainService) {
         this.zookeeperDomainService = zookeeperDomainService;
+        this.configurationDomainService = configurationDomainService;
     }
 
     /**
@@ -150,6 +154,34 @@ public class NodeApi {
             ctx.json(Map.of("error", e.getMessage()));
         }
     }
+    public void executeFourLetterCmd(Context ctx) {
+        String serverId = ctx.pathParam("serverId");
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, String> body = ctx.bodyAsClass(Map.class);
+            String command = body.get("command");
+            if (command == null || command.length() != 4) {
+                ctx.status(400);
+                ctx.json(Map.of("error", "command must be 4 characters"));
+                return;
+            }
+            var serverConfig = configurationDomainService.getById(serverId).orElseThrow();
+            String hostToConnect;
+            if (serverConfig.getSshTunnelEnabled()) {
+                hostToConnect = "localhost:" + serverConfig.getPort();
+            } else {
+                hostToConnect = serverConfig.getHost() + ":" + serverConfig.getPort();
+            }
+            String result = zookeeperDomainService.execute4LetterCommand(
+                serverConfig.getId(), hostToConnect, command.toLowerCase());
+            ctx.json(Map.of("command", command, "result", result));
+        } catch (Exception e) {
+            LOG.error("Failed to execute 4LC for server {}", serverId, e);
+            ctx.status(500);
+            ctx.json(Map.of("error", e.getMessage()));
+        }
+    }
+
 
     public static class CreateNodeForm {
         public String path;

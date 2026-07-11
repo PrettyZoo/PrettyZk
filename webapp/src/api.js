@@ -39,6 +39,8 @@ export const api = {
     request(`/api/nodes/${encodeURIComponent(serverId)}?path=${encodeURIComponent(path)}`, { method: 'DELETE' }),
   searchNodes: (serverId, q) =>
     request(`/api/nodes/${encodeURIComponent(serverId)}/search?q=${encodeURIComponent(q)}`),
+  execute4LC: (serverId, command) =>
+    request(`/api/nodes/${encodeURIComponent(serverId)}/4lc`, { method: 'POST', body: JSON.stringify({ command }) }),
 
   getConfig: () => request('/api/config'),
   updateTheme: (theme) => request('/api/config/theme', { method: 'PUT', body: JSON.stringify({ theme }) }),

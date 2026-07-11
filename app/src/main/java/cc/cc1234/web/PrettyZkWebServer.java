@@ -57,6 +57,11 @@ public class PrettyZkWebServer {
 
         registerRoutes();
 
+        app.before(ctx -> {
+            ctx.header("Access-Control-Allow-Origin", "*");
+            ctx.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+            ctx.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        });
         app.start(host, port);
         LOG.info("PrettyZk web server started at http://{}:{}", host, port);
     }
@@ -91,6 +96,7 @@ public class PrettyZkWebServer {
         app.delete("/api/nodes/{serverId}", nodeApi::deleteNode);
         app.put("/api/nodes/{serverId}", nodeApi::updateNode);
         app.get("/api/nodes/{serverId}/search", nodeApi::searchNodes);
+        app.post("/api/nodes/{serverId}/4lc", nodeApi::executeFourLetterCmd);
 
         // Node events WebSocket for real-time ZK push
         app.ws("/ws/nodes/{serverId}", ws -> {

@@ -7,6 +7,7 @@ import cc.cc1234.web.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.ServerSocket;
 
 public class Application {
@@ -52,7 +53,7 @@ public class Application {
 
         // Create API handlers
         var serverApi = new ServerApi(zkDomainService, configDomainService);
-        var nodeApi = new NodeApi(zkDomainService);
+        var nodeApi = new NodeApi(zkDomainService, configDomainService);
         var configApi = new ConfigApi(configDomainService);
         var terminalApi = new TerminalApi(zkDomainService, configDomainService);
         var logApi = new LogApi();

@@ -283,7 +283,13 @@ async function onAddNodeConfirm(form) {
 async function runFourLetterCmd() {
   const cmd = fourLetterCmd.value.trim().toLowerCase()
   if (!cmd || cmd.length !== 4) { window.__toast?.('Enter 4-letter command', 'error'); return }
-  fourLetterOutput.value = `Executing "${cmd}"...\n(API coming soon)`
+  fourLetterOutput.value = `Executing "${cmd}"...`
+  try {
+    const res = await api.execute4LC(props.serverId, cmd)
+    fourLetterOutput.value = res.result || '(no output)'
+  } catch (e) {
+    fourLetterOutput.value = 'Error: ' + e.message
+  }
 }
 
 let searchTimer = null
