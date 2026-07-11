@@ -59,20 +59,8 @@ jobs:
           cp -R build/jlink-runtime/* src-tauri/resources/runtime/
           cp app/build/install/app/lib/*.jar src-tauri/resources/app/lib/
 
-      - name: Add resources config for Windows
-        run: |
-          python3 -c "
-import json
-with open('src-tauri/tauri.conf.json') as f:
-  config = json.load(f)
-config['bundle']['resources'] = ['resources/**']
-with open('src-tauri/tauri.conf.json', 'w') as f:
-  json.dump(config, f, indent=2)
-"
-          rm -rf src-tauri/target/release/build/prettyzoo-*
-
       - name: Tauri build (MSI includes JRE via resources)
-        run: cd src-tauri && npx tauri build
+        run: cd src-tauri && npx tauri build --config tauri.win.conf.json
 
       - uses: softprops/action-gh-release@v2
         with:
