@@ -9,4 +9,4 @@ node_modules
 target
 *.log
 .env*
-app/src/main/resources/web/
+app/src/main/resources/web/assets/
