@@ -9,14 +9,28 @@ permissions:
   contents: write
 
 jobs:
+  create-draft:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          draft: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   mac-x64:
+    needs: create-draft
     uses: ./.github/workflows/build-mac-x64.yml
     secrets: inherit
 
   mac-arm64:
+    needs: create-draft
     uses: ./.github/workflows/build-mac-arm64.yml
     secrets: inherit
 
   win-x64:
+    needs: create-draft
     uses: ./.github/workflows/build-win-x64.yml
     secrets: inherit
