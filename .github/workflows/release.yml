@@ -68,21 +68,33 @@ jobs:
             --no-header-files --no-man-pages --output build/jlink-runtime
           rm -rf build/jlink-runtime/legal
 
-      - name: Tauri build (bundles JRE automatically via resources config)
+      - name: Tauri build
         run: cd src-tauri && npx tauri build
 
-      - name: Custom DMG with Applications symlink (macOS)
+      - name: Inject JRE (macOS)
         if: runner.os == 'macOS'
         run: |
           APP="src-tauri/target/release/bundle/macos/PrettyZk.app"
+          mkdir -p "$APP/Contents/Resources/runtime" "$APP/Contents/Resources/app/lib"
+          cp -R build/jlink-runtime/* "$APP/Contents/Resources/runtime/"
+          cp app/build/install/app/lib/*.jar "$APP/Contents/Resources/app/lib/"
           DMG_DIR="/tmp/prettyzk-dmg"
           mkdir -p "$DMG_DIR" && cp -R "$APP" "$DMG_DIR/PrettyZk.app" && ln -s /Applications "$DMG_DIR/Applications"
           hdiutil create -volname "PrettyZk" -srcfolder "$DMG_DIR" -ov -format UDZO $GITHUB_WORKSPACE/PrettyZk_3.0.0.dmg
+
+      - name: Package JRE (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          mkdir -p build/extra/runtime build/extra/app/lib
+          cp -R build/jlink-runtime/* build/extra/runtime/
+          cp app/build/install/app/lib/*.jar build/extra/app/lib/
+          cd build/extra && zip -r $GITHUB_WORKSPACE/PrettyZk-jre.zip .
 
       - uses: softprops/action-gh-release@v2
         with:
           files: |
             PrettyZk_3.0.0.dmg
+            PrettyZk-jre.zip
             src-tauri/target/release/bundle/**/*.${{ matrix.ext }}
           draft: true
           fail_on_unmatched_files: false
