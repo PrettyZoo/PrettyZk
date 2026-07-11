@@ -2,7 +2,7 @@
   <nav class="sidebar">
     <div class="sidebar-header">
       <span class="logo">🦓</span>
-      <span class="brand">PrettyZoo</span>
+      <span class="brand">PrettyZk</span>
     </div>
 
     <div class="sidebar-toolbar">
@@ -42,7 +42,7 @@
 
     <div class="sidebar-footer">
       <button class="footer-btn" @click="$emit('logs')" title="Logs">📋 {{ t('sidebar.logs') }}</button>
-      <button class="footer-btn" @click="$emit('toggle-lang')" title="Switch Language">{{ locale === 'zh' ? 'EN' : '中' }}</button>
+      <button class="footer-btn" @click="$emit('toggle-lang')" title="Switch Language">{{ locale === 'zh' ? 'English' : '中文' }}</button>
       <button class="footer-btn" @click="$emit('toggle-theme')" title="Toggle Dark/Light">{{ isDark ? '☀️' : '🌙' }}</button>
     </div>
   </nav>

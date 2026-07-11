@@ -33,7 +33,7 @@ onMounted(() => {
   term.open(terminalContainer.value)
   fitAddon.fit()
 
-  term.write('PrettyZoo Terminal\r\n')
+  term.write('PrettyZk Terminal\r\n')
   writePrompt()
 
   term.onKey(({ key, domEvent }) => {

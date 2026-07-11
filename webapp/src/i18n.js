@@ -1,19 +1,19 @@
-// PrettyZoo Web UI - Internationalization
+// PrettyZk Web UI - Internationalization
 
 import { ref } from 'vue'
 
 const messages = {
   en: {
-    app: { name: 'PrettyZoo' },
+    app: { name: 'PrettyZk' },
     sidebar: {
-      brand: 'PrettyZoo',
+      brand: 'PrettyZk',
       newConnection: 'New Connection',
       servers: 'Servers',
       noServers: 'No servers yet. Click "+" to add one.',
       logs: 'Logs',
     },
     welcome: {
-      title: 'Welcome to PrettyZoo',
+      title: 'Welcome to PrettyZk',
       subtitle: 'A beautiful Zookeeper GUI client',
       newConn: 'New Connection',
       newConnDesc: 'Add a ZooKeeper server to get started',
@@ -114,16 +114,16 @@ const messages = {
   },
 
   zh: {
-    app: { name: 'PrettyZoo' },
+    app: { name: 'PrettyZk' },
     sidebar: {
-      brand: 'PrettyZoo',
+      brand: 'PrettyZk',
       newConnection: '新建连接',
       servers: '服务器列表',
       noServers: '暂无服务器，点击"+"添加',
       logs: '日志',
     },
     welcome: {
-      title: '欢迎使用 PrettyZoo',
+      title: '欢迎使用 PrettyZk',
       subtitle: '优雅的 ZooKeeper 图形化管理工具',
       newConn: '新建连接',
       newConnDesc: '添加 ZooKeeper 服务器开始使用',
@@ -168,7 +168,7 @@ const messages = {
     node: {
       browse: '浏览',
       terminal: '终端',
-      fourLetterCmd: '四字命令',
+      fourLetterCmd: 'ZK 管理命令',
       sync: '同步',
       add: '添加',
       back: '返回',

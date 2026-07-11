@@ -2,115 +2,101 @@
     <img src="release/img/icon.png" width="200">
 </p>
 
+<h1 align="center">PrettyZk</h1>
 
-![release-version](https://img.shields.io/github/v/release/vran-dev/prettyZoo?include_prereleases&style=for-the-badge) ![downloads](https://img.shields.io/github/downloads/vran-dev/PrettyZoo/total?style=for-the-badge) ![language](https://img.shields.io/github/languages/top/vran-dev/PrettyZoo?style=for-the-badge) ![licence](https://img.shields.io/github/license/vran-dev/PrettyZoo?style=for-the-badge) ![stars](https://img.shields.io/github/stars/vran-dev/PrettyZoo?style=for-the-badge)
+<p align="center">
+    <b>PrettyZk</b> is a modern web-based ZooKeeper GUI client, evolved from <a href="https://github.com/vran-dev/PrettyZoo">PrettyZoo</a>.
+</p>
 
-#  Announce
+<p align="center">
+    <img src="https://img.shields.io/badge/language-Java%2017%20%2B%20Vue%203-blue" alt="language">
+    <img src="https://img.shields.io/badge/license-Apache%202.0-green" alt="license">
+</p>
 
-Hello PrettyZoo users.
+---
 
-Since the first version was released on September 30, 2019, almost 4 years have passed. I would like to take this opportunity to express my deepest gratitude to each and every one of you users for being with and supporting this project throughout this time.
+## ✨ Features
 
-However, due to time and energy constraints, I have had to decide to stop maintaining the project. This is a difficult decision, but I believe it is the best choice for the current situation, and such limitations prevent me from continuing to fully support and update the project.
+- **Web-based UI** — Native HTML + CSS + JS (Vue 3), no JavaFX dependency
+- **Desktop app** — Tauri shell provides a native window (macOS/Windows/Linux)
+- **Web deployment** — Can also be deployed as a standalone web service
+- **Real-time updates** — ZK node changes pushed via WebSocket
+- **Dark/Light themes** — CSS variable based, toggle instantly
+- **i18n** — English and Chinese UI, switch anytime
+- **Syntax highlighting** — CodeMirror 6 editor with JSON/XML formatting
+- **Terminal** — xterm.js based interactive ZK terminal
+- **ZK 3.4+ compatible** — Supports legacy ZK servers via native connection
 
-Over the years, we have seen the project grow and develop together. I value the feedback and suggestions that every user has given us, and your support is what keeps me going. However, I have to be honest and face the reality that I can no longer guarantee that the project will be continuously updated and maintained.
+## 🚀 Getting Started
 
-Although I will no longer be maintaining the project, I hope that this open source project will continue to bring value to all of you. After the project is archived, you can still develop and iterate on the project by forking it, and interested developers and users are encouraged to develop and contribute in their own way, so that the project can continue in another form of interest.
+### Prerequisites
 
-Thanks again to everyone for their support and understanding, and apologies to anyone who had expectations for the project!
+- Java 17+
+- Node.js 18+ (for frontend development)
 
-2024-01-09 22:15 by vran
+### Development
 
+```bash
+# Build frontend
+cd webapp && npm install && npm run build
 
-# Language
-
-English |  [中文](README_CN.md)
-
-# What
-
-[PrettyZoo](https://github.com/vran-dev/PrettyZoo) is a GUI for [Zookeeper](https://zookeeper.apache.org/) created by
-JavaFX and Apache Curator Framework.
-
-You can download and install at [Release](https://github.com/vran-dev/PrettyZoo/releases), support
-
-- Windows (msi)
-- Mac (dmg)
-- Linux (rpm & deb)
-
-## If you see PrettyZoo is damaged  in Mac
-
-you can see the solution in [issue-219](https://github.com/vran-dev/PrettyZoo/issues/219)
-
-1. run the follow command
-
-```shell
-sudo spctl --master-disable
+# Start backend
+cd .. && ./gradlew run
+# Open http://127.0.0.1:{port}
 ```
 
-2. open System Preferences->Security & Privacy, select **anywhere**
-3. run the follow command
+### Desktop Build (Tauri)
 
-```shell
-xattr -rc /Applications/prettyZoo.app
+```bash
+# Install Rust (if not installed)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Build and run
+cd src-tauri
+cargo build --release
+./target/release/prettyzk
+
+# Package installer
+cargo tauri build
 ```
 
-4. Enjoy it
+### Docker / Web Deployment
 
-# TODO
+```bash
+# Build the jar
+./gradlew jar
 
-1.
-    - [x] Support i18n (V1.9.0+)
-2.
-    - [ ] terminal highlight
-3.
-    - [x] global font size change (v1.6.0+)
-4.
-    - [x] node data highlight (V1.7.0+)
-5.
-    - [x] migration UI library to   [Jfoenix](https://github.com/sshahine/JFoenix) ( V1.8.0+)
-6.
-    - [ ] zookeeper monitor
-7.
-    - [x] log dashboard (v1.9.3)
+# Run as web service
+java -jar app/build/libs/app-*.jar --web --port 8080
+```
 
-# Feature
+## 📦 Tech Stack
 
-1. Multi zookeeper server manage
-2. Support real-time node synchronize
-3. Support ACL
-4. Support SSH tunnel
-5. Support config export / import
-6. Support node create / search / update / delete
-7. Support terminal operation
-8. Support **JSON** / **XML** data pretty format
-9. Support node data hightlight ( Json / Xml / Properties )
-10. Support reconnet zookeeper automatic
+| Layer | Technology |
+|---|---|
+| HTTP Server | Javalin 6 (embedded Jetty) |
+| REST API | Javalin + Jackson |
+| Frontend | Vue 3 + Vite + vanilla CSS |
+| Editor | CodeMirror 6 |
+| Terminal | xterm.js |
+| Desktop Shell | Tauri 2 (Rust) |
+| ZK Client | Apache Curator 5.x |
+| Build | Gradle + jlink + jpackage |
 
-## Build
+## 🔄 Relationship to PrettyZoo
 
-See wiki: [build yourself](https://github.com/vran-dev/PrettyZoo/wiki/build-yourself)
+PrettyZk is a complete rewrite of [PrettyZoo](https://github.com/vran-dev/PrettyZoo) (by vran-dev), which is now archived. Key differences:
 
-# Sponsor
+| | PrettyZoo (original) | PrettyZk |
+|---|---|---|
+| UI | JavaFX + FXML + JFoenix | Vue 3 + Vite + CSS |
+| Desktop | JavaFX Stage | Tauri WebView |
+| Web Deployment | ❌ | ✅ (--web flag) |
+| Code Editor | RichTextFX | CodeMirror 6 |
+| Terminal | JavaFX TextArea | xterm.js |
+| Theme | CSS files | CSS variables |
+| i18n | Java ResourceBundle | Vue reactive i18n |
 
-By wechat sponsor code
+## 📄 License
 
-<img src="release/img/sponsor.jpg" width="250px"/>
-
-# Show
-
-![new-ui.gif](https://s2.loli.net/2022/11/20/hIwX7MQDSbVqk52.gif)
-
-![dark.gif](https://s2.loli.net/2022/11/20/8Yh6TjcfU5Fzy7b.gif)
-
-![timeout.gif](https://s2.loli.net/2022/11/20/CTFNVoWAUalKIzk.gif)
-
-## Thanks
-
-- [ZooKeeper GUI 客户端](http://vip.iocoder.cn/Zookeeper/PrettyZoo/)  by 「芋道源码」
-
-- [PrettyZoo, 颜值与功能双在线的 Zookeeper 可视化工具](https://mp.weixin.qq.com/s/TkFirILto_moEv_kjBBPFw)
-
-# Supported by
-
-[Jetbrains](https://www.jetbrains.com/)
-![https://www.jetbrains.com/](release/img/jetbrains.svg)
+Apache License 2.0. See [LICENSE](LICENSE) for details.

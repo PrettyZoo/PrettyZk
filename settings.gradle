@@ -1,4 +1,4 @@
-rootProject.name = 'PrettyZoo'
+rootProject.name = 'PrettyZk'
 include 'app'
 include 'core'
 include 'specification'

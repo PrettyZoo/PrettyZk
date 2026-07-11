@@ -15,7 +15,7 @@
         <div class="card-desc">{{ t('welcome.recentDesc') }}</div>
       </div>
     </div>
-    <p class="welcome-footer">PrettyZoo v{{ version }}</p>
+    <p class="welcome-footer">PrettyZk v{{ version }}</p>
   </div>
 </template>
 

@@ -10,9 +10,9 @@ import io.javalin.http.staticfiles.Location;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PrettyZooWebServer {
+public class PrettyZkWebServer {
 
-    private static final Logger LOG = LoggerFactory.getLogger(PrettyZooWebServer.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PrettyZkWebServer.class);
 
     private final ServerApi serverApi;
     private final NodeApi nodeApi;
@@ -24,7 +24,7 @@ public class PrettyZooWebServer {
 
     private Javalin app;
 
-    public PrettyZooWebServer(ServerApi serverApi, NodeApi nodeApi,
+    public PrettyZkWebServer(ServerApi serverApi, NodeApi nodeApi,
                               ConfigApi configApi, TerminalApi terminalApi,
                               LogApi logApi) {
         this.serverApi = serverApi;
@@ -58,7 +58,7 @@ public class PrettyZooWebServer {
         registerRoutes();
 
         app.start(host, port);
-        LOG.info("PrettyZoo web server started at http://{}:{}", host, port);
+        LOG.info("PrettyZk web server started at http://{}:{}", host, port);
     }
 
     public int getPort() { return app != null ? app.port() : -1; }

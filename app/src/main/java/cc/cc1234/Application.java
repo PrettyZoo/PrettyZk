@@ -2,7 +2,7 @@ package cc.cc1234;
 
 import cc.cc1234.core.configuration.service.ConfigurationDomainService;
 import cc.cc1234.core.zookeeper.service.ZookeeperDomainService;
-import cc.cc1234.web.PrettyZooWebServer;
+import cc.cc1234.web.PrettyZkWebServer;
 import cc.cc1234.web.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +46,7 @@ public class Application {
         }
 
         // Initialize backend
-        LOG.info("Starting PrettyZoo...");
+        LOG.info("Starting PrettyZk...");
         var configDomainService = new ConfigurationDomainService();
         var zkDomainService = new ZookeeperDomainService();
 
@@ -58,7 +58,7 @@ public class Application {
         var logApi = new LogApi();
 
         // Start HTTP server
-        PrettyZooWebServer server = new PrettyZooWebServer(
+        PrettyZkWebServer server = new PrettyZkWebServer(
                 serverApi, nodeApi, configApi, terminalApi, logApi
         );
         server.start(host, port);
@@ -67,12 +67,12 @@ public class Application {
         if (webMode) {
             // Web deployment mode: logs URL, externally accessible
             LOG.info("=============================================");
-            LOG.info("  PrettyZoo Web Server started");
+            LOG.info("  PrettyZk Web Server started");
             LOG.info("  Listen on http://{}:{}", host, port);
             LOG.info("=============================================");
         } else {
             // Desktop mode: print URL for Tauri/Electron shell
-            LOG.info("PrettyZoo started on http://127.0.0.1:{}", port);
+            LOG.info("PrettyZk started on http://127.0.0.1:{}", port);
         }
 
         // Keep the server running
