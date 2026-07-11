@@ -43,22 +43,37 @@
     <div class="sidebar-footer">
       <button class="footer-btn" @click="$emit('logs')" title="Logs">📋 {{ t('sidebar.logs') }}</button>
       <button class="footer-btn" @click="$emit('toggle-lang')" title="Switch Language">{{ locale === 'zh' ? 'English' : '中文' }}</button>
+      <button class="footer-btn" @click="showFontSlider = !showFontSlider" title="Font Size">🔤</button>
       <button class="footer-btn" @click="$emit('toggle-theme')" title="Toggle Dark/Light">{{ isDark ? '☀️' : '🌙' }}</button>
+    </div>
+    <div v-if="showFontSlider" class="font-slider-panel">
+      <input type="range" min="10" max="24" :value="fontSize" @input="onFontChange" class="font-slider" />
+      <span class="font-size-label">{{ fontSize }}px</span>
     </div>
   </nav>
 </template>
 
 <script setup>
-import { computed, inject } from 'vue'
+import { ref, computed } from 'vue'
 import { t, getLocale } from '../i18n.js'
+import { api } from '../api.js'
 
 const props = defineProps({
   servers: { type: Array, default: () => [] },
   statuses: { type: Object, default: () => ({}) },
   selectedId: { type: String, default: null },
   locale: { type: String, default: 'en' },
+  fontSize: { type: Number, default: 14 },
 })
-defineEmits(['select', 'add', 'edit', 'delete', 'logs', 'toggle-theme', 'toggle-lang'])
+const emit = defineEmits(['select', 'add', 'edit', 'delete', 'logs', 'toggle-theme', 'toggle-lang', 'update:fontSize'])
+
+const showFontSlider = ref(false)
+
+function onFontChange(e) {
+  const val = parseInt(e.target.value)
+  emit('update:fontSize', val)
+  api.updateFontSize(val).catch(() => {})
+}
 const isDark = computed(() => document.documentElement.getAttribute('data-theme') === 'dark')
 function showContextMenu(e, s) {}
 </script>
@@ -136,5 +151,8 @@ function showContextMenu(e, s) {}
   font-size: 12px; text-align: center; transition: all 0.12s;
 }
 .footer-btn:hover { background: var(--sidebar-hover); color: var(--text-primary); }
+.font-slider-panel { display:flex; align-items:center; gap:6px; padding:6px 12px; border-top:1px solid var(--border-color); background:var(--sidebar-bg); }
+.font-slider { flex:1; height:4px; cursor:pointer; accent-color:var(--accent); }
+.font-size-label { font-size:11px; color:var(--text-muted); min-width:30px; text-align:right; }
 @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.4 } }
 </style>

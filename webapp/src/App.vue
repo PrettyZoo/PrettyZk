@@ -1,10 +1,11 @@
 <template>
-  <div id="app-root" :data-theme="state.config.theme">
+  <div id="app-root" :data-theme="state.config.theme" :style="{ fontSize: state.config.fontSize + 'px' }">
     <!-- Sidebar -->
     <Sidebar
       :servers="state.servers"
       :statuses="state.serverStatuses"
       :locale="currentLocale"
+      :font-size="state.config.fontSize"
       @select="onSelectServer"
       @add="onAddServer"
       @edit="onEditServer"
@@ -12,6 +13,7 @@
       @logs="onOpenLogs"
       @toggle-theme="onToggleTheme"
       @toggle-lang="onToggleLang"
+      @update:font-size="onFontSizeChange"
     />
     <!-- Main Content -->
     <main class="main-content">
@@ -41,7 +43,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, defineAsyncComponent, onMounted } from 'vue'
+import { ref, reactive, defineAsyncComponent, onMounted } from 'vue'
 import { state } from './main.js'
 import { api } from './api.js'
 import { setLocale, getLocale, t } from './i18n.js'
@@ -131,6 +133,11 @@ function onServerSaved(id) {
   activeServerId.value = id
   currentView.value = 'node-browser'
   api.listServers().then(s => state.servers = s || []).catch(e => console.warn(e))
+}
+
+function onFontSizeChange(val) {
+  state.config.fontSize = val
+  document.documentElement.style.fontSize = val + 'px'
 }
 
 function onBackFromNodeBrowser() {
