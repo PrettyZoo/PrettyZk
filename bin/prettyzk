@@ -1,0 +1,4 @@
+#!/bin/bash
+# PrettyZk - Desktop Launcher
+cd "$(dirname "$0")/.."
+exec app/build/install/app/bin/app "$@"
