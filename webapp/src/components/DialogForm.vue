@@ -23,9 +23,9 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { reactive, computed } from 'vue'
-import { t } from '../i18n.js'
+import { t } from '../i18n.ts'
 
 const props = defineProps({
   titleKey: { type: String, default: '' },

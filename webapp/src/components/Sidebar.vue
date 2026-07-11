@@ -55,10 +55,10 @@
   </nav>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue'
-import { t, getLocale } from '../i18n.js'
-import { api } from '../api.js'
+import { t, getLocale } from '../i18n.ts'
+import { api } from '../api.ts'
 
 const props = defineProps({
   servers: { type: Array, default: () => [] },

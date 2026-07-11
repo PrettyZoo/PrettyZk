@@ -15,9 +15,9 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
-import { t } from '../i18n.js'
+import { t } from '../i18n.ts'
 
 const emit = defineEmits(['back'])
 const logs = ref([])

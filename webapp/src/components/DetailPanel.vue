@@ -34,9 +34,9 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue'
-import { t } from '../i18n.js'
+import { t } from '../i18n.ts'
 import CodeEditor from './CodeEditor.vue'
 
 const props = defineProps({

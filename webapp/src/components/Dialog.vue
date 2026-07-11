@@ -14,8 +14,8 @@
   </div>
 </template>
 
-<script setup>
-import { t } from '../i18n.js'
+<script setup lang="ts">
+import { t } from '../i18n.ts'
 defineProps({ title: String, message: String })
 defineEmits(['confirm', 'cancel'])
 </script>

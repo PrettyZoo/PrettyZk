@@ -30,10 +30,10 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from 'vue'
-import { api } from '../api.js'
-import { t } from '../i18n.js'
+import { api } from '../api.ts'
+import { t } from '../i18n.ts'
 
 const props = defineProps({
   node: { type: Object, required: true },

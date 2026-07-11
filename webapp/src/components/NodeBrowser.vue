@@ -96,11 +96,11 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { api } from '../api.js'
-import { t } from '../i18n.js'
-import { state } from '../main.js'
+import { api } from '../api.ts'
+import { t } from '../i18n.ts'
+import { state } from '../main.ts'
 import TerminalApp from './TerminalApp.vue'
 import DetailPanel from './DetailPanel.vue'
 import DialogForm from './DialogForm.vue'

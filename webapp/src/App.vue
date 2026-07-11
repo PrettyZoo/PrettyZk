@@ -43,11 +43,11 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, defineAsyncComponent, onMounted } from 'vue'
-import { state } from './main.js'
-import { api } from './api.js'
-import { setLocale, getLocale, t } from './i18n.js'
+import { state } from './main.ts'
+import { api } from './api.ts'
+import { setLocale, getLocale, t } from './i18n.ts'
 import './style.css'
 
 import Sidebar from './components/Sidebar.vue'

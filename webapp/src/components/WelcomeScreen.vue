@@ -19,11 +19,11 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { api } from '../api.js'
-import { state } from '../main.js'
-import { t } from '../i18n.js'
+import { api } from '../api.ts'
+import { state } from '../main.ts'
+import { t } from '../i18n.ts'
 
 defineProps({ servers: { type: Array, default: () => [] } })
 defineEmits(['add'])
