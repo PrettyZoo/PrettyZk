@@ -45,18 +45,9 @@ export const api = {
   getConfig: () => request('/api/config'),
   updateTheme: (theme) => request('/api/config/theme', { method: 'PUT', body: JSON.stringify({ theme }) }),
   updateFontSize: (fontSize) => request('/api/config/font-size', { method: 'PUT', body: JSON.stringify({ fontSize }) }),
+  updateLocale: (locale) => request('/api/config/locale', { method: 'PUT', body: JSON.stringify({ locale }) }),
+  exportConfig: () => request('/api/config/export', { method: 'POST' }),
+  importConfig: (json) => request('/api/config/import', { method: 'POST', body: json }),
 
   version: () => request('/api/version'),
-}
-
-export function updateLocale(locale) {
-  return fetchApi('/api/config/locale', { method: 'PUT', body: JSON.stringify({ locale }) })
-}
-
-export function exportConfig() {
-  return fetch('/api/config/export').then(r => r.json())
-}
-
-export function importConfig(json) {
-  return fetchApi('/api/config/import', { method: 'POST', body: json })
 }
