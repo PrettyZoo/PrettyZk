@@ -116,21 +116,21 @@ EOF
             --no-header-files --no-man-pages --output build/jlink-runtime
           rm -rf build/jlink-runtime/legal
 
-      - name: Tauri build
+      - name: Stage JRE into Tauri resources
+        run: |
+          rm -rf src-tauri/resources/.keep
+          cp -R build/jlink-runtime/* src-tauri/resources/runtime/
+          cp app/build/install/app/lib/*.jar src-tauri/resources/app/lib/
+
+      - name: Tauri build (MSI includes JRE)
         run: cd src-tauri && npx tauri build
 
-      - name: Create JRE zip for auto-download
-        run: |
-          mkdir -p dist/jre/runtime dist/jre/app/lib
-          cp -R build/jlink-runtime/* dist/jre/runtime/
-          cp app/build/install/app/lib/*.jar dist/jre/app/lib/
-          cd dist && powershell -Command "Compress-Archive -Path jre -DestinationPath jre.zip -Force"
-          echo "JRE zip: $(ls -lh dist/jre.zip)"
+      - name: Upload extras
+        run: ls -lh src-tauri/target/release/bundle/msi/
 
       - uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/jre.zip
             src-tauri/target/release/bundle/msi/*.msi
           draft: true
           fail_on_unmatched_files: false
