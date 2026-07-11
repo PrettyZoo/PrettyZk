@@ -5,7 +5,7 @@
 <h1 align="center">PrettyZk</h1>
 
 <p align="center">
-    <b>PrettyZk</b> 是一个基于 Web 的 ZooKeeper 图形化管理工具，源自 <a href="https://github.com/vran-dev/PrettyZoo">PrettyZoo</a>。
+    <b>PrettyZk</b> 是一个基于 Web 的 ZooKeeper 图形化管理工具，源自 <a href="https://github.com/PrettyZoo/PrettyZk">PrettyZoo</a>。
 </p>
 
 <p align="center">
@@ -69,7 +69,7 @@ java -jar app/build/libs/app-*.jar --web --port 8080
 
 ## 🔄 与 PrettyZoo 的关系
 
-PrettyZk 是对 [PrettyZoo](https://github.com/vran-dev/PrettyZoo)（vran-dev）的完整重写，原项目已归档停止维护。
+PrettyZk 是对 [PrettyZoo](https://github.com/PrettyZoo/PrettyZk)（vran-dev）的完整重写，原项目已归档停止维护。
 
 | | PrettyZoo（原版） | PrettyZk |
 |---|---|---|
