@@ -90,10 +90,43 @@ jobs:
           mkdir -p "$DMG_DIR" && cp -R "$APP" "$DMG_DIR/PrettyZk.app" && ln -s /Applications "$DMG_DIR/Applications"
           hdiutil create -volname "PrettyZk" -srcfolder "$DMG_DIR" -ov -format UDZO $GITHUB_WORKSPACE/PrettyZk_3.0.0.dmg
 
+      - name: Create combined Windows installer
+        if: runner.os == 'Windows'
+        run: |
+          choco install nsis -y --no-progress
+          mkdir -p dist/nsis
+          MSI=$(ls src-tauri/target/release/bundle/msi/*.msi | head -1)
+          cp "$MSI" dist/nsis/
+          mkdir -p dist/nsis/jre/runtime dist/nsis/jre/app/lib
+          cp -R build/jlink-runtime/* dist/nsis/jre/runtime/
+          cp app/build/install/app/lib/*.jar dist/nsis/jre/app/lib/
+          cat > dist/nsis/installer.nsi << 'NSISEOF'
+!define PRODUCT_NAME "PrettyZk"
+!define PRODUCT_VERSION "3.0.0"
+SetCompressor lzma
+Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
+OutFile "PrettyZk-Setup.exe"
+RequestExecutionLevel admin
+
+Section "Install"
+  SetOutPath "$TEMP\prettyzk-install"
+  File "*.msi"
+  File /r "jre"
+  ExecWait 'msiexec /i "$TEMP\prettyzk-install\PrettyZk_3.0.0.msi" /qn'
+  CreateDirectory "$PROGRAMFILES64\PrettyZk\resources\runtime"
+  CreateDirectory "$PROGRAMFILES64\PrettyZk\resources\app\lib"
+  CopyFiles /SILENT "$TEMP\prettyzk-install\jre\runtime\*" "$PROGRAMFILES64\PrettyZk\resources\runtime"
+  CopyFiles /SILENT "$TEMP\prettyzk-install\jre\app\lib\*" "$PROGRAMFILES64\PrettyZk\resources\app\lib"
+  RMDir /r "$TEMP\prettyzk-install"
+SectionEnd
+NSISEOF
+          cd dist/nsis && makensis installer.nsi && cp PrettyZk-Setup.exe $GITHUB_WORKSPACE/
+
       - uses: softprops/action-gh-release@v2
         with:
           files: |
             PrettyZk_3.0.0.dmg
+            PrettyZk-Setup.exe
             src-tauri/target/release/bundle/**/*.${{ matrix.ext }}
           draft: true
           fail_on_unmatched_files: false
