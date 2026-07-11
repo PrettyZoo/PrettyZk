@@ -61,32 +61,42 @@ jobs:
       - name: Backend
         run: ./gradlew :app:installDist --no-daemon -x test
 
-      - name: JRE
+      - name: Build JRE
         run: |
           jlink --module-path "$JAVA_HOME/jmods" \
             --add-modules java.base,java.desktop,java.logging,java.naming,java.management,java.instrument,java.security.jgss,java.net.http,java.scripting,java.xml,jdk.unsupported \
             --strip-debug --no-header-files --no-man-pages --output build/jlink-runtime
-          rm -rf build/jlink-runtime/legal src-tauri/resources
-          mkdir -p src-tauri/resources/runtime src-tauri/resources/app/lib
-          cp -R build/jlink-runtime/* src-tauri/resources/runtime/
-          cp app/build/install/app/lib/*.jar src-tauri/resources/app/lib/
+          rm -rf build/jlink-runtime/legal
 
       - name: Tauri build
         run: cd src-tauri && npx tauri build
 
-      - name: DMG (macOS only)
+      - name: Inject JRE and create DMG (macOS)
         if: runner.os == 'macOS'
         run: |
           APP="src-tauri/target/release/bundle/macos/PrettyZk.app"
+          mkdir -p "$APP/Contents/Resources/runtime" "$APP/Contents/Resources/app/lib"
+          cp -R build/jlink-runtime/* "$APP/Contents/Resources/runtime/"
+          cp app/build/install/app/lib/*.jar "$APP/Contents/Resources/app/lib/"
           DMG_DIR="/tmp/prettyzk-dmg"
           mkdir -p "$DMG_DIR" && cp -R "$APP" "$DMG_DIR/PrettyZk.app" && ln -s /Applications "$DMG_DIR/Applications"
           hdiutil create -volname "PrettyZk" -srcfolder "$DMG_DIR" -ov -format UDZO PrettyZk_3.0.0.dmg
+
+      - name: Package JRE for Windows
+        if: runner.os == 'Windows'
+        run: |
+          mkdir -p build/prettyzk-jre/runtime build/prettyzk-jre/app/lib
+          cp -R build/jlink-runtime/* build/prettyzk-jre/runtime/
+          cd build/prettyzk-jre && zip -r ../prettyzk-jre.zip . && cd ../..
+          ls -lh build/prettyzk-jre.zip
 
       - uses: softprops/action-gh-release@v2
         with:
           files: |
             PrettyZk_3.0.0.dmg
+            build/prettyzk-jre.zip
             src-tauri/target/release/bundle/**/*.${{ matrix.ext }}
           draft: true
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
