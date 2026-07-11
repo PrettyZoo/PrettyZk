@@ -242,7 +242,7 @@ fn main() {
         for line in BufReader::new(stdout).lines().flatten() {
             println!("[backend] {}", line);
             // Only parse lines that explicitly claim to be the startup announcement
-            if line.contains("started on http://127.0.0.1:") {
+            if line.contains("desktop app started on http://127.0.0.1:") {
                 if let Some(p) = line.split("127.0.0.1:").nth(1) {
                     if let Ok(pn) = p.trim_end_matches('/').trim().parse::<u16>() {
                         let _ = port_tx.send(pn);
