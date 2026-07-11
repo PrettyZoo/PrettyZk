@@ -78,12 +78,12 @@ public class NativeZookeeperConnection implements ZookeeperConnection<ZooKeeper>
                     if (zk.exists(current.toString(), false) == null) {
                         zk.create(current.toString(), new byte[0], getAcl(), org.apache.zookeeper.CreateMode.PERSISTENT);
                     }
-                } catch (KeeperException.NodeExistsException e) { }
+                } catch (KeeperException.NodeExistsException e) { /* race condition - node already exists */ }
             }
         }
         try {
             zk.create(path, bytes, getAcl(), zkMode);
-        } catch (KeeperException.NodeExistsException e) { }
+        } catch (KeeperException.NodeExistsException e) { /* race condition - node already exists */ }
     }
 
     @Override
@@ -95,11 +95,11 @@ public class NativeZookeeperConnection implements ZookeeperConnection<ZooKeeper>
                     String childPath = path.equals("/") ? "/" + child : path + "/" + child;
                     delete(childPath, true);
                 }
-            } catch (KeeperException.NoNodeException e) { }
+            } catch (KeeperException.NoNodeException e) { /* race condition - node already deleted */ }
         }
         try {
             zk.delete(path, -1);
-        } catch (KeeperException.NoNodeException e) { }
+        } catch (KeeperException.NoNodeException e) { /* race condition - node already deleted */ }
     }
 
     @Override
