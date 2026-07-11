@@ -46,39 +46,15 @@
             <div v-else-if="treeData.length === 0" class="tree-empty">{{ t('node.selectNode') }}</div>
           </div>
         </div>
-        <div v-if="selectedNode" class="detail-panel">
-          <div class="detail-header">
-            <div class="detail-path">{{ selectedNode.path }}</div>
-            <div class="detail-actions">
-              <button class="btn btn-small btn-primary" @click="saveData">{{ t('node.save') }}</button>
-              <button class="btn btn-small btn-danger" @click="deleteSelected">{{ t('node.deleteNode') }}</button>
-            </div>
-          </div>
-          <div class="detail-meta">
-            <div class="meta-item"><span class="meta-key">{{ t('node.dataVersion') }}</span><span class="meta-val">{{ selectedNode.dataVersion }}</span></div>
-            <div class="meta-item"><span class="meta-key">{{ t('node.dataLength') }}</span><span class="meta-val">{{ selectedNode.dataLength }}</span></div>
-            <div class="meta-item"><span class="meta-key">{{ t('node.children') }}</span><span class="meta-val">{{ selectedNode.numChildren }}</span></div>
-            <div class="meta-item"><span class="meta-key">{{ t('node.ephemeral') }}</span><span class="meta-val">{{ selectedNode.ephemeral ? 'Yes' : 'No' }}</span></div>
-            <div class="meta-item"><span class="meta-key">{{ t('node.createdTime') }}</span><span class="meta-val">{{ formatTime(selectedNode.creationTime) }}</span></div>
-            <div class="meta-item"><span class="meta-key">{{ t('node.modifiedTime') }}</span><span class="meta-val">{{ formatTime(selectedNode.modifiedTime) }}</span></div>
-          </div>
-          <div class="editor-section">
-            <div class="editor-toolbar">
-              <span class="editor-label">{{ t('node.nodeData') }}</span>
-              <div class="editor-spacer"></div>
-              <button class="editor-fmt-btn" :class="{ active: editorFmt === 'raw' }" @click="editorFmt = 'raw'">RAW</button>
-              <button class="editor-fmt-btn" :class="{ active: editorFmt === 'json' }" @click="toggleFmt('json')">JSON</button>
-              <button class="editor-fmt-btn" :class="{ active: editorFmt === 'xml' }" @click="toggleFmt('xml')">XML</button>
-            </div>
-            <div class="editor-wrap">
-              <CodeEditor
-                :model-value="displayData"
-                @update:model-value="onEditorChange"
-                :language="editorLang" :dark="isDark" :readonly="editorFmt !== 'raw'"
-              />
-            </div>
-          </div>
-        </div>
+        <DetailPanel
+          v-if="selectedNode"
+          :node="selectedNode"
+          :node-data="nodeData"
+          :saving="saving"
+          @save="saveData"
+          @delete="deleteSelected"
+          @update:node-data="nodeData = $event"
+        />
         <div v-else class="detail-empty">
           <p>{{ t('node.selectNode') }}</p>
         </div>
@@ -125,8 +101,8 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { api } from '../api.js'
 import { t } from '../i18n.js'
 import { state } from '../main.js'
-import CodeEditor from './CodeEditor.vue'
 import TerminalApp from './TerminalApp.vue'
+import DetailPanel from './DetailPanel.vue'
 import DialogForm from './DialogForm.vue'
 import TreeNode from './TreeNode.vue'
 
@@ -143,42 +119,10 @@ const searchQuery = ref('')
 const searchResults = ref([])
 const fourLetterCmd = ref('')
 const fourLetterOutput = ref('')
-const isDark = computed(() => document.documentElement.getAttribute('data-theme') === 'dark')
 const connecting = ref(true)
 const refreshKey = ref(0)
 const showAddForm = ref(false)
-const editorFmt = ref('raw')
-
-function toggleFmt(fmt) {
-  if (editorFmt.value === fmt) { editorFmt.value = 'raw'; return }
-  editorFmt.value = fmt
-}
-
-const editorLang = computed(() => editorFmt.value === 'json' ? 'json' : editorFmt.value === 'xml' ? 'xml' : 'text')
-
-const displayData = computed(() => {
-  const raw = nodeData.value || ''
-  if (editorFmt.value === 'raw') return raw
-  try {
-    if (editorFmt.value === 'json') {
-      return JSON.stringify(JSON.parse(raw), null, 2)
-    }
-    if (editorFmt.value === 'xml') {
-      // Simple XML formatting - indent tags
-      return raw.replace(/>\s*</g, '>\n<').split('\n').map((line, i) => {
-        const indent = line.startsWith('</') ? -1 : 0
-        return '  '.repeat(Math.max(0, i + indent)) + line
-      }).join('\n')
-    }
-  } catch (e) { return raw }
-  return raw
-})
-
-function onEditorChange(val) {
-  if (editorFmt.value === 'raw') {
-    nodeData.value = val
-  }
-}
+const saving = ref(false)
 
 const ctxMenu = ref({ show: false, x: 0, y: 0, node: null })
 function onNodeContextMenu(event, node) { ctxMenu.value = { show: true, x: event.clientX, y: event.clientY, node } }
@@ -252,11 +196,13 @@ async function onSelectNode(node) {
   } catch (e) { window.__toast?.('Failed to load: ' + e.message, 'error') }
 }
 
-async function saveData() {
+async function saveData(data) {
+  saving.value = true
   try {
-    await api.updateNode(props.serverId, { path: selectedNodePath.value, data: nodeData.value })
+    await api.updateNode(props.serverId, { path: selectedNodePath.value, data: data || nodeData.value })
     window.__toast?.('Data saved', 'success')
   } catch (e) { window.__toast?.('Failed to save: ' + e.message, 'error') }
+  finally { saving.value = false }
 }
 
 function deleteSelected() {
@@ -370,6 +316,7 @@ onUnmounted(() => { if (nodeWs) { nodeWs.close(); nodeWs = null } })
 .crumb-sep { color:var(--text-muted); padding:0 2px; font-size:11px; }
 .toolbar-actions { display:flex; gap:4px; }
 .browse-split { flex:1; display:flex; overflow:hidden; }
+.detail-empty { flex:1; display:flex; align-items:center; justify-content:center; color:var(--text-muted); }
 .tree-panel { width:300px; min-width:240px; border-right:1px solid var(--border-color); display:flex; flex-direction:column; overflow:hidden; position:relative; }
 .search-box { padding:10px 12px; position:relative; flex-shrink:0; }
 .search-box input { width:100%; padding:7px 10px; border:1px solid var(--input-border); border-radius:6px; background:var(--input-bg); color:var(--text-primary); font-size:12px; outline:none; }
@@ -379,26 +326,6 @@ onUnmounted(() => { if (nodeWs) { nodeWs.close(); nodeWs = null } })
 .search-hit:hover { background:var(--bg-hover); }
 .tree-scroll { flex:1; overflow-y:auto; padding:4px 0; }
 .tree-empty { padding:20px; text-align:center; color:var(--text-muted); font-size:13px; }
-.detail-panel { flex:1; display:flex; flex-direction:column; overflow:hidden; }
-.detail-empty { flex:1; display:flex; align-items:center; justify-content:center; color:var(--text-muted); }
-.detail-header { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; background:var(--toolbar-bg); border-bottom:1px solid var(--border-color); gap:8px; flex-shrink:0; }
-.detail-path { font-size:12px; color:var(--text-secondary); font-family:'SF Mono',Monaco,Consolas,monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.detail-actions { display:flex; gap:4px; flex-shrink:0; }
-.detail-meta { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:0; border-bottom:1px solid var(--border-color); flex-shrink:0; background:var(--bg-primary); }
-.meta-item { padding:6px 12px; display:flex; flex-direction:column; gap:1px; border-bottom:1px solid var(--border-light); border-right:1px solid var(--border-light); }
-.meta-item:nth-child(odd) { background:var(--bg-secondary); }
-.meta-key { font-size:10px; color:var(--text-muted); font-weight:600; letter-spacing:0.3px; }
-.meta-val { font-size:13px; font-family:'SF Mono',Monaco,Consolas,monospace; color:var(--text-primary); word-break:break-all; }
-.editor-section { flex:1; display:flex; flex-direction:column; }
-.editor-toolbar { display:flex; align-items:center; padding:4px 12px; background:var(--toolbar-bg); border-bottom:1px solid var(--border-color); gap:4px; }
-.editor-label { font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; }
-.editor-spacer { flex:1; }
-.editor-fmt-btn { padding:2px 8px; border:1px solid var(--border-color); border-radius:4px; background:transparent; color:var(--text-muted); font-size:11px; font-weight:600; cursor:pointer; transition:all 0.12s; }
-.editor-fmt-btn:hover { background:var(--bg-hover); color:var(--text-primary); }
-.editor-fmt-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
-.editor-wrap { flex:1; overflow:hidden; display:flex; flex-direction:column; min-height:0; }
-.editor-section { flex:1; display:flex; flex-direction:column; min-height:0; }
-.detail-panel { flex:1; display:flex; flex-direction:column; overflow:hidden; min-height:0; }
 .4lc-output { margin-top:12px; padding:12px; background:var(--code-bg); border:1px solid var(--border-color); border-radius:6px; font-family:'SF Mono',Monaco,monospace; font-size:12px; white-space:pre-wrap; min-height:200px; overflow:auto; }
 .ctx-menu { position:fixed; z-index:9998; background:var(--bg-primary); border:1px solid var(--border-color); border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.15); padding:4px; min-width:140px; }
 .ctx-item { padding:8px 14px; cursor:pointer; font-size:13px; border-radius:4px; color:var(--text-primary); }
