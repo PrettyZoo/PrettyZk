@@ -13,6 +13,7 @@ jobs:
     defaults:
       run:
         shell: bash
+
     steps:
       - uses: actions/checkout@v4
 
@@ -26,8 +27,9 @@ jobs:
           node-version: '22'
 
       - uses: dtolnay/rust-toolchain@stable
+
       - run: npm install -g @tauri-apps/cli@latest
-      - run: choco install wixtoolset -y --no-progress
+      - run: choco install wixtoolset nsis -y --no-progress
 
       - uses: actions/cache@v4
         with:
@@ -40,7 +42,9 @@ jobs:
           key: win-x64-${{ hashFiles('**/*.gradle*', 'src-tauri/Cargo.lock', 'src-tauri/tauri.conf.json') }}
 
       - run: cd webapp && npm install && npm run build
-      - run: ./gradlew :app:installDist --no-daemon -x test
+
+      - name: Backend
+        run: ./gradlew :app:installDist --no-daemon -x test
 
       - name: JRE
         run: |
@@ -49,19 +53,43 @@ jobs:
             --no-header-files --no-man-pages --output build/jlink-runtime
           rm -rf build/jlink-runtime/legal
 
-      - name: Stage JRE
-        run: |
-          rm -f src-tauri/resources/.gitkeep
-          mkdir -p src-tauri/resources/runtime src-tauri/resources/app/lib
-          cp -R build/jlink-runtime/* src-tauri/resources/runtime/
-          cp app/build/install/app/lib/*.jar src-tauri/resources/app/lib/
-
-      - name: Tauri build
+      - name: Tauri build (no resources config -> no build.rs issue)
         run: cd src-tauri && npx tauri build
+
+      - name: Create combined setup
+        shell: pwsh
+        run: |
+          # Create NSIS installer combining MSI + JRE + backend jars
+          $msi = Get-ChildItem src-tauri/target/release/bundle/msi/*.msi | Select-Object -First 1
+          New-Item -ItemType Directory -Force -Path dist/src
+          Copy-Item $msi.FullName dist/src/app.msi
+          Copy-Item build/jlink-runtime dist/src/runtime -Recurse -Force
+          mkdir -p dist/src/app/lib
+          Copy-Item app/build/install/app/lib/*.jar dist/src/app/lib/ -Force
+
+          @"
+!define PRODUCT_NAME "PrettyZk"
+!define PRODUCT_VERSION "3.0.0"
+SetCompressor lzma
+Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
+OutFile "PrettyZk-Setup.exe"
+RequestExecutionLevel admin
+
+Section "Install"
+  SetOutPath "`$INSTDIR"
+  File /r "src\*.*"
+  ExecWait 'msiexec /i "`$INSTDIR\app.msi" /qn'
+SectionEnd
+"@ | Out-File -FilePath dist/installer.nsi -Encoding ASCII
+
+          & "C:\Program Files (x86)\NSIS\makensis.exe" dist/installer.nsi
+          Copy-Item dist/PrettyZk-Setup.exe $env:GITHUB_WORKSPACE/
 
       - uses: softprops/action-gh-release@v2
         with:
-          files: src-tauri/target/release/bundle/msi/*.msi
+          files: |
+            PrettyZk-Setup.exe
+            src-tauri/target/release/bundle/msi/*.msi
           tag_name: ${{ github.ref_name }}
           draft: true
           fail_on_unmatched_files: false
