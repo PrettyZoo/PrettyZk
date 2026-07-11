@@ -48,8 +48,7 @@ jobs:
             librsvg2-dev patchelf libssl-dev
 
       - name: Install Tauri CLI
-        if: runner.os != 'Windows'
-        run: npm install -g @tauri-apps/cli
+        run: npm install -g @tauri-apps/cli@latest
 
       - name: Cache
         uses: actions/cache@v4
@@ -74,7 +73,7 @@ jobs:
           cp app/build/install/app/lib/*.jar src-tauri/resources/app/lib/
 
       - name: Build Tauri
-        run: cd src-tauri && cargo tauri build
+        run: cd src-tauri && npx tauri build
 
       - name: Create DMG with drag-install (macOS)
         if: runner.os == 'macOS'
