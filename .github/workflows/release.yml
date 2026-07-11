@@ -76,7 +76,9 @@ jobs:
           cp app/build/install/app/lib/*.jar src-tauri/resources/app/lib/
 
       - name: Tauri build
-        run: cd src-tauri && npx tauri build
+        run: |
+          rm -rf src-tauri/target/release/build/prettyzoo-*
+          cd src-tauri && npx tauri build
 
       - name: Custom DMG with drag-install (macOS)
         if: runner.os == 'macOS'
