@@ -70,21 +70,7 @@ jobs:
           cp -R build/jlink-runtime/* "$APP/Contents/Resources/runtime/"
           cp app/build/install/app/lib/*.jar "$APP/Contents/Resources/app/lib/"
           cp src-tauri/icons/icon.icns "$APP/Contents/Resources/"
-          cat > "$APP/Contents/Info.plist" << EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-<key>CFBundleExecutable</key><string>prettyzoo</string>
-<key>CFBundleIdentifier</key><string>cc.cc1234.prettyzk</string>
-<key>CFBundleName</key><string>PrettyZk</string>
-<key>CFBundleVersion</key><string>3.0.0</string>
-<key>CFBundleShortVersionString</key><string>3.0.0</string>
-<key>CFBundleIconFile</key><string>icon.icns</string>
-<key>CFBundlePackageType</key><string>APPL</string>
-<key>LSMinimumSystemVersion</key><string>12.0</string>
-<key>NSHighResolutionCapable</key><true/>
-</dict></plist>
-EOF
+          cp src-tauri/Info.plist "$APP/Contents/"
           echo "App size: $(du -sh $APP | cut -f1)"
           DMG_DIR="/tmp/prettyzk-dmg"
           mkdir -p "$DMG_DIR" && cp -R "$APP" "$DMG_DIR/PrettyZk.app" && ln -s /Applications "$DMG_DIR/Applications"
