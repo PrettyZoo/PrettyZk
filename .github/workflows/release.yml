@@ -68,30 +68,33 @@ jobs:
             --no-header-files --no-man-pages --output build/jlink-runtime
           rm -rf build/jlink-runtime/legal
 
-      - name: Stage resources for Tauri
-        run: |
-          rm -rf src-tauri/resources
-          mkdir -p src-tauri/resources/runtime src-tauri/resources/app/lib
-          cp -R build/jlink-runtime/* src-tauri/resources/runtime/
-          cp app/build/install/app/lib/*.jar src-tauri/resources/app/lib/
-
       - name: Tauri build
-        run: |
-          rm -rf src-tauri/target/release/build/prettyzoo-*
-          cd src-tauri && npx tauri build
+        run: cd src-tauri && npx tauri build
 
-      - name: Custom DMG with drag-install (macOS)
+      - name: Inject JRE & custom DMG (macOS)
         if: runner.os == 'macOS'
         run: |
           APP="src-tauri/target/release/bundle/macos/PrettyZk.app"
+          mkdir -p "$APP/Contents/Resources/runtime" "$APP/Contents/Resources/app/lib"
+          cp -R build/jlink-runtime/* "$APP/Contents/Resources/runtime/"
+          cp app/build/install/app/lib/*.jar "$APP/Contents/Resources/app/lib/"
           DMG_DIR="/tmp/prettyzk-dmg"
           mkdir -p "$DMG_DIR" && cp -R "$APP" "$DMG_DIR/PrettyZk.app" && ln -s /Applications "$DMG_DIR/Applications"
           hdiutil create -volname "PrettyZk" -srcfolder "$DMG_DIR" -ov -format UDZO $GITHUB_WORKSPACE/PrettyZk_3.0.0.dmg
+
+      - name: Create JRE package (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          mkdir -p dist/jre/runtime dist/jre/app/lib
+          cp -R build/jlink-runtime/* dist/jre/runtime/
+          cp app/build/install/app/lib/*.jar dist/jre/app/lib/
+          cd dist && tar -czf $GITHUB_WORKSPACE/PrettyZk-jre-${{ github.ref_name }}.tar.gz jre/
 
       - uses: softprops/action-gh-release@v2
         with:
           files: |
             PrettyZk_3.0.0.dmg
+            PrettyZk-jre-${{ github.ref_name }}.tar.gz
             src-tauri/target/release/bundle/**/*.${{ matrix.ext }}
           draft: true
           fail_on_unmatched_files: false
