@@ -19,6 +19,9 @@ fn resource_dir() -> PathBuf {
     // Windows/Linux: same dir as exe
     let win = exe.parent().unwrap().join("resources");
     if win.join("runtime").exists() { return win; }
+    // Windows/Linux (NSIS installer): runtime directly alongside exe, no "resources" prefix
+    let nsis = exe.parent().unwrap().to_path_buf();
+    if nsis.join("runtime").exists() { return nsis; }
     // Dev mode
     let dev = exe.parent().unwrap().parent().unwrap().join("resources");
     if dev.join("runtime").exists() { return dev; }
@@ -160,8 +163,7 @@ fn start_backend(java: &str, port: u16) -> Child {
 
 fn main() {
     let java = find_java();
-    let port = 0u16;
-    let mut child = start_backend(&java, port);
+    let mut child = start_backend(&java, 0);
 
     let stdout = child.stdout.take().unwrap();
     let stderr = child.stderr.take().unwrap();

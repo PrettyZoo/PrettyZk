@@ -83,7 +83,7 @@
     />
 
     <div v-show="activeTab === '4lc'" class="tab-panel">
-      <div class="toolbar"><div class="breadcrumb">4-Letter Command</div></div>
+      <div class="toolbar"><div class="breadcrumb">{{ t('node.fourLetterCmd') }}</div></div>
       <div style="padding:20px">
         <div class="form-group" style="max-width:200px">
           <label>{{ t('node.cmd') }}</label>

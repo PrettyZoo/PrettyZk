@@ -36,7 +36,7 @@
         </div>
       </div>
       <div v-if="!servers || servers.length === 0" class="server-empty">
-        No servers yet. Click "+" to add one.
+        {{ t('sidebar.noServers') }}
       </div>
     </div>
 
