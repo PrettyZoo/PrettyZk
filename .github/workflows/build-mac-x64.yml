@@ -21,7 +21,6 @@ jobs:
           node-version: '22'
       - uses: dtolnay/rust-toolchain@stable
       - run: echo "APPLE_SIGNING_ENABLED=false" >> $GITHUB_ENV
-
       - uses: actions/cache@v4
         with:
           path: |
@@ -56,11 +55,12 @@ jobs:
           cp src-tauri/Info.plist "$APP/Contents/"
           DMG_DIR="/tmp/prettyzk-dmg"
           mkdir -p "$DMG_DIR" && cp -R "$APP" "$DMG_DIR/PrettyZk.app" && ln -s /Applications "$DMG_DIR/Applications"
-          hdiutil create -volname "PrettyZk" -srcfolder "$DMG_DIR" -ov -format UDZO "$GITHUB_WORKSPACE/PrettyZk_3.0.0_x64.dmg"
+          VER="${GITHUB_REF_NAME#v}"
+          hdiutil create -volname "PrettyZk" -srcfolder "$DMG_DIR" -ov -format UDZO "$GITHUB_WORKSPACE/PrettyZk_${VER}_x64.dmg"
 
       - uses: softprops/action-gh-release@v2
         with:
-          files: PrettyZk_3.0.0_x64.dmg
+          files: PrettyZk_*.dmg
           tag_name: ${{ github.ref_name }}
           draft: true
         env:

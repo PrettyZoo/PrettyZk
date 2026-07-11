@@ -64,7 +64,7 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
-          files: src-tauri/target/release/bundle/msi/*.msi
+          files: src-tauri/target/release/bundle/msi/PrettyZk_*.msi
           tag_name: ${{ github.ref_name }}
           draft: true
           fail_on_unmatched_files: false
