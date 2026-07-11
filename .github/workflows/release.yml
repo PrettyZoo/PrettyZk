@@ -5,12 +5,10 @@ on:
     tags:
       - 'v*'
 
-jobs:
-  dispatch:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "Triggering builds for ${{ github.ref_name }}"
+permissions:
+  contents: write
 
+jobs:
   mac-x64:
     uses: ./.github/workflows/build-mac-x64.yml
     secrets: inherit

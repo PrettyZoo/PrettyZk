@@ -3,6 +3,9 @@ name: macOS Intel (x86_64)
 on:
   workflow_call:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-13
