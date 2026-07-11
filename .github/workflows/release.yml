@@ -11,17 +11,12 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            name: mac
             ext: dmg
           - os: windows-latest
-            name: win
             ext: msi
-          - os: ubuntu-latest
-            name: linux
-            ext: deb
 
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 90
     defaults:
       run:
         shell: bash
@@ -40,16 +35,6 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Install Linux deps
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev \
-            librsvg2-dev patchelf libssl-dev
-
-      - name: Install Tauri CLI
-        run: npm install -g @tauri-apps/cli@latest
-
       - name: Cache
         uses: actions/cache@v4
         with:
@@ -57,12 +42,18 @@ jobs:
             ~/.gradle/caches ~/.gradle/wrapper
             ~/.cargo/registry ~/.cargo/git
             src-tauri/target
-          key: ${{ runner.os }}-${{ hashFiles('**/*.gradle*', 'src-tauri/Cargo.lock') }}
+          key: ${{ runner.os }}-build-${{ hashFiles('**/*.gradle*', 'src-tauri/Cargo.lock', 'webapp/package-lock.json') }}
 
-      - run: cd webapp && npm install && npm run build
-      - run: ./gradlew :app:installDist -x test
+      - name: Install Tauri CLI
+        run: npm install -g @tauri-apps/cli@latest
 
-      - name: Bundle JRE + backend for Tauri
+      - name: Frontend
+        run: cd webapp && npm install && npm run build
+
+      - name: Backend
+        run: ./gradlew :app:installDist --no-daemon -x test
+
+      - name: JRE
         run: |
           jlink --module-path "$JAVA_HOME/jmods" \
             --add-modules java.base,java.desktop,java.logging,java.naming,java.management,java.instrument,java.security.jgss,java.net.http,java.scripting,java.xml,jdk.unsupported \
@@ -72,25 +63,22 @@ jobs:
           cp -R build/jlink-runtime/* src-tauri/resources/runtime/
           cp app/build/install/app/lib/*.jar src-tauri/resources/app/lib/
 
-      - name: Build Tauri
+      - name: Tauri build
         run: cd src-tauri && npx tauri build
 
-      - name: Create DMG with drag-install (macOS)
+      - name: DMG (macOS only)
         if: runner.os == 'macOS'
         run: |
           APP="src-tauri/target/release/bundle/macos/PrettyZk.app"
           DMG_DIR="/tmp/prettyzk-dmg"
           mkdir -p "$DMG_DIR" && cp -R "$APP" "$DMG_DIR/PrettyZk.app" && ln -s /Applications "$DMG_DIR/Applications"
           hdiutil create -volname "PrettyZk" -srcfolder "$DMG_DIR" -ov -format UDZO PrettyZk_3.0.0.dmg
-          rm -rf "$DMG_DIR"
 
       - uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
             PrettyZk_3.0.0.dmg
             src-tauri/target/release/bundle/**/*.${{ matrix.ext }}
           draft: true
-          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
