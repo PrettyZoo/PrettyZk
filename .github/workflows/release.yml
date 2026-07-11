@@ -10,7 +10,16 @@ permissions:
 
 jobs:
   build-mac:
-    runs-on: macos-latest
+    strategy:
+      matrix:
+        include:
+          - arch: x64
+            runner: macos-13
+            rust_target: x86_64-apple-darwin
+          - arch: aarch64
+            runner: macos-latest
+            rust_target: aarch64-apple-darwin
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
@@ -35,8 +44,11 @@ jobs:
           rm -rf build/jlink-runtime/legal
           echo "JRE size: $(du -sh build/jlink-runtime | cut -f1)"
 
-      - name: Build Tauri (binary only, no bundle)
-        run: cd src-tauri && cargo build --release
+      - name: Build binary
+        run: |
+          rustup target add ${{ matrix.rust_target }}
+          cd src-tauri && cargo build --release --target ${{ matrix.rust_target }}
+          cp target/${{ matrix.rust_target }}/release/prettyzoo target/release/prettyzoo
 
       - name: Inject JRE & create DMG
         run: |
@@ -66,12 +78,12 @@ EOF
           DMG_DIR="/tmp/prettyzk-dmg"
           mkdir -p "$DMG_DIR" && cp -R "$APP" "$DMG_DIR/PrettyZk.app" && ln -s /Applications "$DMG_DIR/Applications"
           hdiutil create -volname "PrettyZk" -srcfolder "$DMG_DIR" -ov -format UDZO \
-            "$GITHUB_WORKSPACE/PrettyZk_3.0.0.dmg" 2>/dev/null
-          echo "DMG size: $(du -sh $GITHUB_WORKSPACE/PrettyZk_3.0.0.dmg | cut -f1)"
+            "$GITHUB_WORKSPACE/PrettyZk_3.0.0_${{ matrix.arch }}.dmg" 2>/dev/null
+          echo "DMG size: $(du -sh $GITHUB_WORKSPACE/PrettyZk_3.0.0_${{ matrix.arch }}.dmg | cut -f1)"
 
       - uses: softprops/action-gh-release@v2
         with:
-          files: PrettyZk_3.0.0.dmg
+          files: PrettyZk_3.0.0_${{ matrix.arch }}.dmg
           draft: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
