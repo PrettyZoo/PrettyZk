@@ -35,6 +35,8 @@
       "icons/icon.ico"
     ],
     "externalBin": [],
-    "resources": []
+    "resources": [
+      "resources/**"
+    ]
   }
 }

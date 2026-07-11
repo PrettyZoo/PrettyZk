@@ -13,7 +13,16 @@ struct JavaProcess(Mutex<Option<Child>>);
 
 fn resource_dir() -> PathBuf {
     let exe = std::env::current_exe().unwrap();
-    exe.parent().unwrap().parent().unwrap().join("Resources")
+    // macOS: PrettyZk.app/Contents/Resources/
+    // Windows: same dir as exe/resources/
+    // Dev: project root
+    let res = exe.parent().unwrap().join("resources");
+    if res.exists() { return res; }
+    // Try macOS bundle structure
+    let mac = exe.parent().unwrap().parent().unwrap().join("Resources");
+    if mac.exists() { return mac; }
+    // Fallback: try parent of parent (dev mode from target/release/)
+    exe.parent().unwrap().parent().unwrap().join("resources")
 }
 
 fn check_server(port: u16) -> bool {
