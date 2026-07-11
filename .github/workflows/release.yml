@@ -86,7 +86,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-win:
-    runs-on: windows-latest
+    strategy:
+      matrix:
+        include:
+          - arch: x64
+            runner: windows-latest
+          - arch: arm64
+            runner: windows-11-arm
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     defaults:
       run:
@@ -102,7 +109,10 @@ jobs:
           node-version: '22'
       - uses: dtolnay/rust-toolchain@stable
       - run: npm install -g @tauri-apps/cli@latest
-      - run: choco install wixtoolset -y --no-progress
+
+      - name: Install WiX (x64 only)
+        if: matrix.arch == 'x64'
+        run: choco install wixtoolset -y --no-progress
 
       - uses: actions/cache@v4
         with:
@@ -112,7 +122,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: win-${{ hashFiles('**/*.gradle*', 'src-tauri/Cargo.lock') }}
+          key: win-${{ matrix.arch }}-${{ hashFiles('**/*.gradle*', 'src-tauri/Cargo.lock') }}
 
       - run: cd webapp && npm install && npm run build
       - run: ./gradlew :app:installDist --no-daemon -x test
@@ -126,20 +136,17 @@ jobs:
 
       - name: Stage JRE into Tauri resources
         run: |
-          rm -rf src-tauri/resources/.keep
+          rm -rf src-tauri/resources
+          mkdir -p src-tauri/resources/runtime src-tauri/resources/app/lib
           cp -R build/jlink-runtime/* src-tauri/resources/runtime/
           cp app/build/install/app/lib/*.jar src-tauri/resources/app/lib/
 
       - name: Tauri build (MSI includes JRE)
         run: cd src-tauri && npx tauri build
 
-      - name: Upload extras
-        run: ls -lh src-tauri/target/release/bundle/msi/
-
       - uses: softprops/action-gh-release@v2
         with:
-          files: |
-            src-tauri/target/release/bundle/msi/*.msi
+          files: src-tauri/target/release/bundle/msi/*.msi
           draft: true
           fail_on_unmatched_files: false
         env:
