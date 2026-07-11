@@ -1,6 +1,6 @@
 [package]
 name = "prettyzoo"
-version = "2.1.1"
+version = "3.0.0"
 description = "Pretty nice Zookeeper GUI"
 authors = ["vran"]
 edition = "2021"

@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicedoc/nicedoc/master/schemas/tauri-schema.json",
   "productName": "PrettyZk",
-  "version": "2.1.1",
+  "version": "3.0.0",
   "identifier": "cc.cc1234.prettyzk",
   "build": {
     "frontendDist": "../app/src/main/resources/web",
