@@ -70,7 +70,8 @@ jobs:
 
       - name: Stage JRE (overwrites .gitkeep placeholder)
         run: |
-          rm -rf src-tauri/resources/.keep
+          rm -rf src-tauri/resources
+          mkdir -p src-tauri/resources/runtime src-tauri/resources/app/lib
           cp -R build/jlink-runtime/* src-tauri/resources/runtime/
           cp app/build/install/app/lib/*.jar src-tauri/resources/app/lib/
 
