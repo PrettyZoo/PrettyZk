@@ -23,14 +23,25 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4 with: { distribution: 'temurin', java-version: '21' }
-      - uses: actions/setup-node@v4 with: { node-version: '22' }
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - uses: dtolnay/rust-toolchain@stable
       - run: npm install -g @tauri-apps/cli@latest
       - run: echo "APPLE_SIGNING_ENABLED=false" >> $GITHUB_ENV
 
-      - uses: actions/cache@v4 with:
-          path: ~/.gradle/caches ~/.gradle/wrapper ~/.cargo/registry ~/.cargo/git src-tauri/target
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
           key: macos-${{ hashFiles('**/*.gradle*', 'src-tauri/Cargo.lock') }}
 
       - run: cd webapp && npm install && npm run build
@@ -96,14 +107,25 @@ EOF
         shell: bash
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4 with: { distribution: 'temurin', java-version: '21' }
-      - uses: actions/setup-node@v4 with: { node-version: '22' }
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - uses: dtolnay/rust-toolchain@stable
       - run: npm install -g @tauri-apps/cli@latest
       - run: choco install wixtoolset -y --no-progress
 
-      - uses: actions/cache@v4 with:
-          path: ~/.gradle/caches ~/.gradle/wrapper ~/.cargo/registry ~/.cargo/git src-tauri/target
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
           key: win-${{ hashFiles('**/*.gradle*', 'src-tauri/Cargo.lock') }}
 
       - run: cd webapp && npm install && npm run build
