@@ -37,30 +37,43 @@ fn find_java() -> String {
 }
 
 fn start_backend(java: &str, port: u16) -> Child {
-    // Try bundled app distribution
-    let app_dir = resource_dir().join("app");
-    let bundled_jar = app_dir.join("lib").join("app-3.0.0.jar");
-    if bundled_jar.exists() {
-        let cp = app_dir.join("lib");
-        let classpath = format!("{}", cp.display());
-        return Command::new(java)
-            .args(["-cp", &classpath, "-Dfile.encoding=utf-8", "cc.cc1234.Application", "--port", &port.to_string()])
-            .stdout(Stdio::piped()).stderr(Stdio::piped())
-            .spawn().expect("Failed to start bundled backend");
+    let res = resource_dir();
+
+    // Collect all jar files from lib directory
+    let lib_dir = res.join("app").join("lib");
+    let mut cp = String::new();
+
+    if lib_dir.exists() {
+        if let Ok(entries) = std::fs::read_dir(&lib_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().map_or(false, |e| e == "jar") {
+                    if !cp.is_empty() { cp.push(':'); }
+                    cp.push_str(path.to_str().unwrap());
+                }
+            }
+        }
     }
 
-    // Dev mode: project build directory
+    if !cp.is_empty() {
+        return Command::new(java)
+            .args(["-cp", &cp, "-Dfile.encoding=utf-8", "cc.cc1234.Application", "--port", &port.to_string()])
+            .stdout(Stdio::piped()).stderr(Stdio::piped())
+            .spawn().expect("Failed to start backend");
+    }
+
+    // Dev: use installDist script
     let mut dir = std::env::current_exe().unwrap();
     for _ in 0..4 { dir.pop(); }
-    let dev_bin = dir.join("app").join("build").join("install").join("app").join("bin").join("app");
-    if dev_bin.exists() {
-        return Command::new(&dev_bin)
+    let dev = dir.join("app").join("build").join("install").join("app").join("bin").join("app");
+    if dev.exists() {
+        return Command::new(&dev)
             .args(["--port", &port.to_string()])
             .stdout(Stdio::piped()).stderr(Stdio::piped())
             .spawn().expect("Failed to start dev backend");
     }
 
-    panic!("Backend not found. Build: gradlew :app:installDist");
+    panic!("Backend not found. Run: gradlew :app:installDist");
 }
 
 fn main() {
