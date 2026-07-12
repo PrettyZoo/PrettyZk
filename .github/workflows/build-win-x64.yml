@@ -28,9 +28,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - run: npm install -g @tauri-apps/cli@2
-
-      - run: choco install wixtoolset nsis -y --no-progress
+      - run: choco install nsis -y --no-progress
 
       - uses: actions/cache@v4
         with:
@@ -54,20 +52,29 @@ jobs:
             --no-header-files --no-man-pages --output build/jlink-runtime
           rm -rf build/jlink-runtime/legal
 
-      - name: Build MSI
-        run: cd src-tauri && npx tauri build
+      - name: Build Tauri binary
+        run: cd src-tauri && cargo build --release
 
-      - name: Build combined installer
+      - name: Download WebView2 bootstrapper
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $msi = Get-ChildItem src-tauri/target/release/bundle/msi/*.msi | Select-Object -First 1
-          if (-not $msi) { Write-Error "MSI not found"; exit 1 }
           New-Item -ItemType Directory -Force -Path dist/stage
-          Copy-Item $msi.FullName dist/stage/app.msi
+          Invoke-WebRequest -Uri 'https://go.microsoft.com/fwlink/?linkid=2124703' -OutFile 'dist/stage/MicrosoftEdgeWebview2Setup.exe' -UseBasicParsing
+
+      - name: Build NSIS installer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # Tauri binary and WebView2 loader
+          Copy-Item src-tauri/target/release/prettyzoo.exe dist/stage/
+          Copy-Item src-tauri/target/release/WebView2Loader.dll dist/stage/ -ErrorAction SilentlyContinue
+          # JRE
           Copy-Item build/jlink-runtime dist/stage/runtime -Recurse -Force
+          # Java application JARs
           New-Item -ItemType Directory -Force -Path dist/stage/app/lib
           Copy-Item app/build/install/app/lib/*.jar dist/stage/app/lib/
+          # NSIS script
           Copy-Item scripts/installer.nsi dist/
           $ver = "${{ github.ref_name }}" -replace '^v', ''
           & "C:\Program Files (x86)\NSIS\makensis.exe" /V1 "-DVERSION=$ver" dist/installer.nsi
@@ -78,7 +85,6 @@ jobs:
         with:
           files: |
             PrettyZk-Setup.exe
-            src-tauri/target/release/bundle/msi/PrettyZk_*.msi
           tag_name: ${{ github.ref_name }}
           draft: true
           fail_on_unmatched_files: false

@@ -11,7 +11,6 @@ OutFile "PrettyZk-Setup.exe"
 RequestExecutionLevel admin
 InstallDir "$PROGRAMFILES64\PrettyZk"
 
-; Product metadata for Add/Remove Programs
 !define PRODUCT_NAME "PrettyZk"
 !define PRODUCT_PUBLISHER "vran"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
@@ -20,21 +19,19 @@ Section "Install"
   SetOutPath "$INSTDIR"
   File /r "stage\*.*"
 
-  ; Run MSI with error handling
-  DetailPrint "Installing PrettyZk..."
-  nsExec::ExecToStack 'msiexec /i "$INSTDIR\app.msi" /qn'
-  Pop $0  ; exit code
-  Pop $1  ; output (optional detail)
-
+  ; Install WebView2 runtime (skips if already present)
+  DetailPrint "Ensuring WebView2 Runtime is installed..."
+  nsExec::ExecToStack '"$INSTDIR\MicrosoftEdgeWebview2Setup.exe" /silent /install'
+  Pop $0
   ${If} $0 != 0
-    ${If} $0 != 3010  ; 3010 = ERROR_SUCCESS_REBOOT_REQUIRED (still successful)
-      MessageBox MB_ICONSTOP "MSI installation failed with exit code $0.$\n$\nOutput: $1"
-      Delete "$INSTDIR\app.msi"
-      SetOutPath "$TEMP"
-      RMDir /r "$INSTDIR"
-      Quit
-    ${EndIf}
+    MessageBox MB_OK|MB_ICONINFORMATION "WebView2 installation returned exit code $0. The app may fail to start if WebView2 is missing."
   ${EndIf}
+  Delete "$INSTDIR\MicrosoftEdgeWebview2Setup.exe"
+
+  ; Create Start Menu shortcuts
+  CreateDirectory "$SMPROGRAMS\${PRODUCT_NAME}"
+  CreateShortcut "$SMPROGRAMS\${PRODUCT_NAME}\PrettyZk.lnk" "$INSTDIR\prettyzoo.exe"
+  CreateShortcut "$SMPROGRAMS\${PRODUCT_NAME}\Uninstall.lnk" "$INSTDIR\uninstall.exe"
 
   ; Write uninstall registry entries for Add/Remove Programs
   WriteRegStr HKLM "${PRODUCT_UNINST_KEY}" "DisplayName" "${PRODUCT_NAME} ${VERSION}"
@@ -50,8 +47,10 @@ Section "Install"
 SectionEnd
 
 Section "uninstall"
-  ; Uninstall the MSI product first
-  nsExec::ExecToLog 'msiexec /x "$INSTDIR\app.msi" /qn'
+  ; Remove Start Menu shortcuts
+  Delete "$SMPROGRAMS\${PRODUCT_NAME}\PrettyZk.lnk"
+  Delete "$SMPROGRAMS\${PRODUCT_NAME}\Uninstall.lnk"
+  RMDir "$SMPROGRAMS\${PRODUCT_NAME}"
   ; Clean up registry
   DeleteRegKey HKLM "${PRODUCT_UNINST_KEY}"
   ; Remove install directory
