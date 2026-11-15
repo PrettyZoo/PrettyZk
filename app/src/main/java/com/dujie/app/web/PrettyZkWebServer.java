@@ -108,6 +108,7 @@ public class PrettyZkWebServer {
 
         app.get("/api/nodes/{serverId}", nodeApi::listNodes);
         app.get("/api/nodes/{serverId}/children", nodeApi::listChildren);
+        app.get("/api/nodes/{serverId}/detail", nodeApi::getNodeDetail);
         app.post("/api/nodes/{serverId}", nodeApi::createNode);
         app.delete("/api/nodes/{serverId}", nodeApi::deleteNode);
         app.put("/api/nodes/{serverId}", nodeApi::updateNode);

@@ -72,6 +72,42 @@ public class NodeApi {
     }
 
     /**
+     * GET /api/nodes/{serverId}/detail?path=/
+     * Node data/stat only. The tree uses /children, so selecting a directory
+     * with 50k children does not download the whole child list again.
+     */
+    public void getNodeDetail(Context ctx) {
+        String serverId = ctx.pathParam("serverId");
+        String path = ctx.queryParam("path");
+        if (path == null || path.isBlank()) {
+            path = "/";
+        }
+        if (path.contains("..")) {
+            ctx.status(400);
+            ctx.json(Map.of("error", "Invalid path"));
+            return;
+        }
+        try {
+            ZkNode node = zookeeperDomainService.getNode(serverId, path);
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("path", node.getPath());
+            result.put("data", node.getData());
+            result.put("ephemeralOwner", node.getEphemeralOwner());
+            result.put("dataLength", node.getDataLength());
+            result.put("numChildren", node.getNumChildren());
+            result.put("creationTime", node.getCtime());
+            result.put("modifiedTime", node.getMtime());
+            result.put("dataVersion", node.getVersion());
+            result.put("ephemeral", node.getEphemeralOwner() != 0);
+            ctx.json(result);
+        } catch (Exception e) {
+            LOG.error("Failed to get node detail for server {} at {}", serverId, path, e);
+            ctx.status(500);
+            ctx.json(Map.of("error", "Failed to get node detail"));
+        }
+    }
+
+    /**
      * GET /api/nodes/{serverId}/children?path=/
      * Lightweight tree expansion payload: only child names are returned.
      */

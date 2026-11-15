@@ -372,7 +372,7 @@ async function selectRow(row: TreeRow) {
 async function onSelectNode(row: { path: string }) {
   selectedNodePath.value = row.path
   try {
-    const data = await api.listNodes(props.serverId, row.path)
+    const data = await api.getNodeDetail(props.serverId, row.path)
     selectedNode.value = data
     nodeData.value = data.data || ''
   } catch (e: any) {
@@ -562,9 +562,52 @@ function connectWs(serverId: string) {
         const message = JSON.parse(event.data)
         if (!['added', 'updated', 'deleted'].includes(message.type)) return
         const path = message.path || '/'
-        scheduleRefresh(parentPath(path))
-        if (path === selectedNodePath.value) {
-          onSelectNode({ path })
+        const parent = parentPath(path)
+
+        if (message.type === 'updated') {
+          // Metadata/data changed; the tree structure does not.
+          if (path === selectedNodePath.value) {
+            onSelectNode({ path })
+          }
+          return
+        }
+
+        const siblings = childrenMap.get(parent)
+        if (!siblings) {
+          // The parent is not loaded (or not expanded): let the debounced
+          // loader decide whether it needs a refresh.
+          scheduleRefresh(parent)
+          return
+        }
+
+        if (message.type === 'added') {
+          if (!siblings.some((row) => row.path === path)) {
+            siblings.push({
+              path,
+              name: path.substring(path.lastIndexOf('/') + 1),
+              depth: depthOf(path),
+              numChildren: 0,
+            })
+          }
+        } else if (message.type === 'deleted') {
+          const index = siblings.findIndex((row) => row.path === path)
+          if (index >= 0) {
+            siblings.splice(index, 1)
+          }
+          if (
+            selectedNodePath.value === path ||
+            selectedNodePath.value?.startsWith(path + '/')
+          ) {
+            selectedNode.value = null
+            selectedNodePath.value = null
+          }
+        }
+
+        if (parent === '/') {
+          rootNumChildren.value = siblings.length
+        }
+        if (selectedNodePath.value === parent) {
+          onSelectNode({ path: parent })
         }
       } catch {
         // ignore malformed frames
