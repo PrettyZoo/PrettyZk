@@ -38,8 +38,6 @@ export const api = {
   connect: (id: string) => request(`/api/servers/${encodeURIComponent(id)}/connect`, { method: 'POST' }),
   disconnect: (id: string) => request(`/api/servers/${encodeURIComponent(id)}/disconnect`, { method: 'POST' }),
 
-  listNodes: (serverId: string, path = '/') =>
-    request(`/api/nodes/${encodeURIComponent(serverId)}?path=${encodeURIComponent(path)}`),
   listChildren: (serverId: string, path = '/', offset = 0, limit = 5000) =>
     request(
       `/api/nodes/${encodeURIComponent(serverId)}/children?path=${encodeURIComponent(path)}` +

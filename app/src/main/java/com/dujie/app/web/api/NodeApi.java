@@ -27,51 +27,6 @@ public class NodeApi {
     }
 
     /**
-     * GET /api/nodes/{serverId}?path=/
-     */
-    public void listNodes(Context ctx) {
-        String serverId = ctx.pathParam("serverId");
-        String path = ctx.queryParam("path");
-        if (path == null || path.isBlank()) {
-            path = "/";
-        }
-        if (path.contains("..")) {
-            ctx.status(400);
-            ctx.json(Map.of("error", "Invalid path"));
-            return;
-        }
-        try {
-            ZkNode node = zookeeperDomainService.getNode(serverId, path);
-            final List<String> children = zookeeperDomainService.getChildren(serverId, path);
-            Map<String, Object> result = new LinkedHashMap<>();
-            result.put("path", node.getPath());
-            result.put("data", node.getData());
-            result.put("ephemeralOwner", node.getEphemeralOwner());
-            result.put("dataLength", node.getDataLength());
-            result.put("numChildren", node.getNumChildren());
-            result.put("creationTime", node.getCtime());
-            result.put("modifiedTime", node.getMtime());
-            result.put("dataVersion", node.getVersion());
-            result.put("ephemeral", node.getEphemeralOwner() != 0);
-
-            List<Map<String, Object>> childNodes = new ArrayList<>();
-            for (String childName : children) {
-                String childPath = "/".equals(path) ? "/" + childName : path + "/" + childName;
-                Map<String, Object> childInfo = new LinkedHashMap<>();
-                childInfo.put("name", childName);
-                childInfo.put("path", childPath);
-                childNodes.add(childInfo);
-            }
-            result.put("children", childNodes);
-            ctx.json(result);
-        } catch (Exception e) {
-            LOG.error("Failed to list nodes for server {} at {}", serverId, path, e);
-            ctx.status(500);
-            ctx.json(Map.of("error", "Failed to list nodes"));
-        }
-    }
-
-    /**
      * GET /api/nodes/{serverId}/detail?path=/
      * Node data/stat only. The tree uses /children, so selecting a directory
      * with 50k children does not download the whole child list again.

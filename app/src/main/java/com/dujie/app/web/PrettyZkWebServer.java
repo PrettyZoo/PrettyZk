@@ -106,7 +106,6 @@ public class PrettyZkWebServer {
         app.post("/api/servers/{id}/connect", ctx -> serverApi.connect(ctx, nodeEventWsManager));
         app.post("/api/servers/{id}/disconnect", serverApi::disconnect);
 
-        app.get("/api/nodes/{serverId}", nodeApi::listNodes);
         app.get("/api/nodes/{serverId}/children", nodeApi::listChildren);
         app.get("/api/nodes/{serverId}/detail", nodeApi::getNodeDetail);
         app.post("/api/nodes/{serverId}", nodeApi::createNode);
