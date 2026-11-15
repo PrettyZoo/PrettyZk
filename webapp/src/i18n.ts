@@ -67,6 +67,8 @@ const messages: Record<string, Record<string, unknown>> = {
       deleted: 'Server deleted',
       deleteFailed: 'Failed to delete: {msg}',
       loadFailed: 'Failed to load server: {msg}',
+      hostRequired: 'Host is required',
+      invalidPort: 'Port must be between 1 and 65535',
       connect: 'Connect',
       disconnect: 'Disconnect',
       connected: 'Connected',
@@ -78,6 +80,10 @@ const messages: Record<string, Record<string, unknown>> = {
     status: {
       noServer: 'No server selected',
       ready: 'Ready',
+      checkUpdate: 'Check for updates',
+      upToDate: 'You are running the latest version',
+      updateAvailable: 'New version available: {version}',
+      updateFailed: 'Update check failed: {msg}',
     },
     node: {
       browse: 'Browse',
@@ -216,6 +222,8 @@ const messages: Record<string, Record<string, unknown>> = {
       deleted: '服务器已删除',
       deleteFailed: '删除失败: {msg}',
       loadFailed: '加载服务器失败: {msg}',
+      hostRequired: '主机不能为空',
+      invalidPort: '端口必须在 1-65535 之间',
       connect: '连接',
       disconnect: '断开',
       connected: '已连接',
@@ -227,6 +235,10 @@ const messages: Record<string, Record<string, unknown>> = {
     status: {
       noServer: '未选择服务器',
       ready: '就绪',
+      checkUpdate: '检查更新',
+      upToDate: '已是最新版本',
+      updateAvailable: '发现新版本：{version}',
+      updateFailed: '检查更新失败: {msg}',
     },
     node: {
       browse: '浏览',

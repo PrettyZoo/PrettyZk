@@ -97,16 +97,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
 import { ChevronRight, FolderTree, Plus, RefreshCw, TerminalSquare, Wrench } from 'lucide-vue-next'
 import { api } from '../api.ts'
 import { t } from '../i18n.ts'
 import { state } from '../state.ts'
 import { toast, confirm } from '../composables/feedback.ts'
-import TerminalApp from './TerminalApp.vue'
-import DetailPanel from './DetailPanel.vue'
-import DialogForm from './DialogForm.vue'
 import TreeNode from './TreeNode.vue'
+
+const TerminalApp = defineAsyncComponent(() => import('./TerminalApp.vue'))
+const DetailPanel = defineAsyncComponent(() => import('./DetailPanel.vue'))
+const DialogForm = defineAsyncComponent(() => import('./DialogForm.vue'))
 
 const props = defineProps({ serverId: { type: String, required: true } })
 const emit = defineEmits(['back'])
@@ -145,7 +146,17 @@ function ctxMenuDelete() {
   })
 }
 
-function refreshTree() { refreshKey.value++ }
+let refreshTimer: ReturnType<typeof setTimeout> | null = null
+
+// Coalesce bursts of TreeCache events. A large tree can emit thousands of
+// events while it syncs; refreshing once per 250ms keeps the UI responsive.
+function refreshTree() {
+  if (refreshTimer) return
+  refreshTimer = setTimeout(() => {
+    refreshTimer = null
+    refreshKey.value++
+  }, 250)
+}
 
 const addFormParentOverride = ref('')
 const addFormFields = computed(() => [
@@ -293,7 +304,16 @@ onMounted(() => {
   connectWs(props.serverId)
 })
 
-onUnmounted(() => { if (nodeWs) { nodeWs.close(); nodeWs = null } })
+onUnmounted(() => {
+  if (refreshTimer) {
+    clearTimeout(refreshTimer)
+    refreshTimer = null
+  }
+  if (nodeWs) {
+    nodeWs.close()
+    nodeWs = null
+  }
+})
 </script>
 
 <style scoped>

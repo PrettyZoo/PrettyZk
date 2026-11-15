@@ -27,6 +27,11 @@
 
     <Loggers>
         <Logger name="com.dujie.app" level="INFO"/>
+        <!-- Curator, ZooKeeper and Jetty are very chatty on large trees. -->
+        <Logger name="org.apache.curator" level="WARN"/>
+        <Logger name="org.apache.zookeeper" level="WARN"/>
+        <Logger name="org.eclipse.jetty" level="WARN"/>
+        <Logger name="io.javalin" level="WARN"/>
         <Root level="INFO">
             <AppenderRef ref="RollingFile"/>
             <AppenderRef ref="Console"/>

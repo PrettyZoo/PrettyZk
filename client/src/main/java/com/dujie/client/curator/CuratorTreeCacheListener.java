@@ -21,6 +21,9 @@ public class CuratorTreeCacheListener implements TreeCacheListener {
 
     private List<ZookeeperNodeListener> listeners;
 
+    /** Initial TreeCache replay is not broadcast; the UI loads nodes on demand. */
+    private volatile boolean initialized;
+
     public CuratorTreeCacheListener(String id,
                                     List<ZookeeperNodeListener> listeners) {
         this.id = id;
@@ -31,8 +34,9 @@ public class CuratorTreeCacheListener implements TreeCacheListener {
     public void childEvent(CuratorFramework client, TreeCacheEvent event) throws Exception {
         final String server = client.getZookeeperClient().getCurrentConnectionString();
         if (event.getType() == TreeCacheEvent.Type.INITIALIZED) {
+            initialized = true;
             log.debug("{} tree node sync finished", server);
-            listeners.forEach(listeners -> listeners.syncCompleted(id));
+            listeners.forEach(listener -> listener.syncCompleted(id));
             return;
         }
         if (event.getType() == TreeCacheEvent.Type.CONNECTION_SUSPENDED
@@ -46,12 +50,17 @@ public class CuratorTreeCacheListener implements TreeCacheListener {
             return;
         }
 
+        // Ignore the NODE_ADDED burst emitted while the cache is initially
+        // populated. Sending one WS message per node would flood the browser.
+        if (!initialized) {
+            return;
+        }
+
         final String path = event.getData().getPath();
         final ZkNode node = new ZkNode();
         node.setPath(path);
         node.setStat(event.getData().getStat());
         if (event.getData().getData() == null) {
-            // TODO check null
             node.setData("");
             node.setDataBytes(new byte[0]);
         } else {

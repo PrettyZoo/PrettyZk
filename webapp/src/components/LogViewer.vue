@@ -20,6 +20,7 @@ import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { t } from '../i18n.ts'
 
 const emit = defineEmits(['back'])
+const MAX_LINES = 2000
 const logs = ref([])
 const connected = ref(false)
 const logContainer = ref(null)
@@ -30,6 +31,9 @@ onMounted(() => {
     eventSource = new EventSource('/api/logs/stream')
     eventSource.addEventListener('log', (e) => {
       logs.value.push(e.data)
+      if (logs.value.length > MAX_LINES) {
+        logs.value.splice(0, logs.value.length - MAX_LINES)
+      }
       nextTick(() => {
         if (logContainer.value) {
           logContainer.value.scrollTop = logContainer.value.scrollHeight

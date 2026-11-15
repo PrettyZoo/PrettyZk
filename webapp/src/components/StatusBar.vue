@@ -9,7 +9,14 @@
       <span class="status-state">{{ stateLabel }}</span>
     </div>
     <div class="status-right">
-      <span class="status-version">v{{ version || '3.0.0' }}</span>
+      <button
+        class="status-version"
+        :disabled="checking"
+        :title="t('status.checkUpdate')"
+        @click="checkUpdate"
+      >
+        v{{ version || '3.0.0' }}
+      </button>
       <span class="status-separator">·</span>
       <span>ZooKeeper GUI</span>
     </div>
@@ -17,14 +24,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { t } from '../i18n.ts'
+import { api } from '../api.ts'
+import { dialog, toast } from '../composables/feedback.ts'
 
 const props = defineProps({
   server: { type: Object, default: null },
   status: { type: String, default: '' },
   version: { type: String, default: '' },
 })
+
+const checking = ref(false)
 
 const dotClass = computed(() => props.status || 'disconnected')
 const stateLabel = computed(() => {
@@ -33,6 +44,27 @@ const stateLabel = computed(() => {
   if (props.status === 'connecting') return t('server.connecting')
   return t('server.disconnected')
 })
+
+async function checkUpdate() {
+  if (checking.value) return
+  checking.value = true
+  try {
+    const result = await api.checkLatestVersion()
+    if (result.updateAvailable) {
+      dialog.info({
+        title: t('status.checkUpdate'),
+        content: `${t('status.updateAvailable', { version: result.latest })}\n${result.url}`,
+        positiveText: t('common.confirm'),
+      })
+    } else {
+      toast(t('status.upToDate'), 'success')
+    }
+  } catch (e: any) {
+    toast(t('status.updateFailed', { msg: e.message }), 'error')
+  } finally {
+    checking.value = false
+  }
+}
 </script>
 
 <style scoped>
@@ -85,6 +117,19 @@ const stateLabel = computed(() => {
   background: var(--text-muted);
 }
 .status-version {
+  border: none;
+  background: transparent;
+  padding: 0 2px;
+  border-radius: 3px;
   color: var(--text-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+.status-version:hover {
+  color: var(--accent);
+}
+.status-version:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 </style>

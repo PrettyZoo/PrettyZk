@@ -163,6 +163,14 @@ onMounted(async () => {
 })
 
 async function save() {
+  if (!form.host || !form.host.trim()) {
+    toast(t('server.hostRequired'), 'error')
+    return
+  }
+  if (form.port == null || form.port < 1 || form.port > 65535) {
+    toast(t('server.invalidPort'), 'error')
+    return
+  }
   saving.value = true
   try {
     const data = {

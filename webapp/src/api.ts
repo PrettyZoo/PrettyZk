@@ -59,4 +59,5 @@ export const api = {
   importConfig: (json: string) => request('/api/config/import', { method: 'POST', body: json }),
 
   version: () => request('/api/version'),
+  checkLatestVersion: () => request('/api/version/latest'),
 }

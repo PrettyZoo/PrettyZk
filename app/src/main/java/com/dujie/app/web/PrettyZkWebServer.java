@@ -97,6 +97,7 @@ public class PrettyZkWebServer {
         app.get("/", ctx -> ctx.redirect("/web/index.html"));
         app.get("/api/health", ctx -> ctx.result("{\"status\":\"ok\"}"));
         app.get("/api/version", configApi::getVersion);
+        app.get("/api/version/latest", configApi::checkLatestVersion);
 
         app.get("/api/servers", serverApi::listServers);
         app.post("/api/servers", serverApi::saveServer);

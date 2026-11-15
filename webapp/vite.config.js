@@ -20,5 +20,24 @@ export default defineConfig({
     outDir: path.resolve(__dirname, 'dist'),
     emptyOutDir: true,
     sourcemap: false,
+    chunkSizeWarningLimit: 900,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-vue': ['vue'],
+          'vendor-naive': ['naive-ui'],
+          'vendor-editor': [
+            'codemirror',
+            '@codemirror/state',
+            '@codemirror/view',
+            '@codemirror/lang-json',
+            '@codemirror/lang-xml',
+            '@codemirror/theme-one-dark',
+          ],
+          'vendor-terminal': ['@xterm/xterm', '@xterm/addon-fit'],
+          'vendor-icons': ['lucide-vue-next'],
+        },
+      },
+    },
   },
 })

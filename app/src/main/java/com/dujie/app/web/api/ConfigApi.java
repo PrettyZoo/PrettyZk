@@ -3,6 +3,7 @@ package com.dujie.app.web.api;
 import com.dujie.core.configuration.entity.Configuration;
 import com.dujie.core.configuration.service.ConfigurationDomainService;
 import com.dujie.app.version.Version;
+import com.dujie.app.version.VersionChecker;
 import io.javalin.http.Context;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +27,16 @@ public class ConfigApi {
                 "version", Version.VERSION,
                 "name", "PrettyZk"
         ));
+    }
+
+    public void checkLatestVersion(Context ctx) {
+        try {
+            ctx.json(VersionChecker.check());
+        } catch (Exception e) {
+            LOG.warn("Latest version check failed: {}", e.toString());
+            ctx.status(502);
+            ctx.json(Map.of("error", "version check failed", "detail", String.valueOf(e.getMessage())));
+        }
     }
 
     public void getConfig(Context ctx) {

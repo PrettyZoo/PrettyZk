@@ -9,8 +9,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -53,7 +57,20 @@ public class JsonPrettyZooConfigRepository implements PrettyZooConfigRepository 
     public void save(ConfigData config) {
         try {
             final String json = JsonUtils.to(config);
-            Files.write(Paths.get(CONFIG_PATH), json.getBytes(StandardCharsets.UTF_8));
+            final Path target = Paths.get(CONFIG_PATH);
+            if (target.getParent() != null) {
+                Files.createDirectories(target.getParent());
+            }
+            final Path temp = target.resolveSibling(target.getFileName() + ".tmp");
+            Files.write(temp, json.getBytes(StandardCharsets.UTF_8),
+                    StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING,
+                    StandardOpenOption.WRITE);
+            try {
+                Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
