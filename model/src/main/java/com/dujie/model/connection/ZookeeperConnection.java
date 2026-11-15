@@ -22,5 +22,12 @@ public interface ZookeeperConnection<T> {
 
     void sync(List<ZookeeperNodeListener> listeners);
 
+    /**
+     * Number of cached children, or -1 when the implementation has no cache.
+     */
+    default int getChildCount(String path) {
+        return -1;
+    }
+
     String getId();
 }

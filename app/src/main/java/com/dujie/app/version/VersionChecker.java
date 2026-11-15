@@ -30,7 +30,7 @@ public final class VersionChecker {
             "https://github.com/PrettyZoo/PrettyZk/tags.atom";
     private static final String RELEASES_PAGE =
             "https://github.com/PrettyZoo/PrettyZk/releases/latest";
-    private static final Duration TIMEOUT = Duration.ofSeconds(5);
+    private static final Duration TIMEOUT = Duration.ofSeconds(3);
     private static final Pattern ENTRY_TITLE = Pattern.compile(
             "<entry>.*?<title>([^<]+)</title>", Pattern.DOTALL);
 
@@ -107,7 +107,7 @@ public final class VersionChecker {
         }
     }
 
-    private static boolean isNewer(String remote, String local) {
+    static boolean isNewer(String remote, String local) {
         String[] remoteParts = normalize(remote).split("\\.");
         String[] localParts = normalize(local).split("\\.");
         int length = Math.max(remoteParts.length, localParts.length);

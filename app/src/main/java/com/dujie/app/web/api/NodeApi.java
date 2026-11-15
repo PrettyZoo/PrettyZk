@@ -123,9 +123,28 @@ public class NodeApi {
             return;
         }
         try {
-            List<String> children = zookeeperDomainService.getChildren(serverId, path);
+            List<String> names = zookeeperDomainService.getChildren(serverId, path);
+            int total = names.size();
+            int offset = parseBounded(ctx.queryParam("offset"), 0, 0, total);
+            int limit = parseBounded(ctx.queryParam("limit"), 5000, 1, 20000);
+            int end = Math.min(total, offset + limit);
+            List<Map<String, Object>> children = new ArrayList<>();
+            for (String name : names.subList(offset, end)) {
+                String childPath = "/".equals(path) ? "/" + name : path + "/" + name;
+                Map<String, Object> child = new LinkedHashMap<>();
+                child.put("name", name);
+                int childCount = zookeeperDomainService.getChildCount(serverId, childPath);
+                if (childCount >= 0) {
+                    child.put("numChildren", childCount);
+                }
+                children.add(child);
+            }
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("path", path);
+            result.put("total", total);
+            result.put("offset", offset);
+            result.put("limit", limit);
+            result.put("hasMore", end < total);
             result.put("children", children);
             ctx.json(result);
         } catch (Exception e) {
@@ -221,8 +240,8 @@ public class NodeApi {
             return;
         }
         try {
-            List<ZkNode> results = zookeeperDomainService.search(serverId, query);
-            List<Map<String, Object>> vos = results.stream()
+            var result = zookeeperDomainService.search(serverId, query);
+            List<Map<String, Object>> vos = result.getNodes().stream()
                     .map(n -> {
                         Map<String, Object> m = new LinkedHashMap<>();
                         m.put("path", n.getPath());
@@ -230,7 +249,7 @@ public class NodeApi {
                         return m;
                     })
                     .collect(Collectors.toList());
-            ctx.json(vos);
+            ctx.json(Map.of("nodes", vos, "truncated", result.isTruncated()));
         } catch (Exception e) {
             ctx.status(500);
             ctx.json(Map.of("error", "Search failed"));
@@ -306,5 +325,17 @@ public class NodeApi {
 
     public static class DeleteNodeForm {
         public List<String> paths;
+    }
+
+    private static int parseBounded(String value, int fallback, int min, int max) {
+        if (value == null || value.isBlank()) {
+            return Math.min(fallback, max);
+        }
+        try {
+            int parsed = Integer.parseInt(value);
+            return Math.max(min, Math.min(parsed, max));
+        } catch (NumberFormatException e) {
+            return Math.min(fallback, max);
+        }
     }
 }

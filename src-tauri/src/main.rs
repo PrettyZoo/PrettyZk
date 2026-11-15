@@ -13,6 +13,19 @@ use tauri::{Manager, RunEvent, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 const BACKEND_MAIN_CLASS: &str = "com.dujie.app.Application";
 const READY_MARKER: &str = "PRETTYZK_READY ";
 
+const BACKEND_LOST_SCRIPT: &str = r#"
+(function () {
+  if (document.getElementById('prettyzk-backend-lost')) return;
+  var el = document.createElement('div');
+  el.id = 'prettyzk-backend-lost';
+  el.textContent = 'PrettyZk backend stopped. Please restart the application.';
+  el.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483647;' +
+    'padding:8px 12px;background:#b42318;color:#fff;text-align:center;' +
+    'font:12px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;';
+  document.body.appendChild(el);
+})();
+"#;
+
 struct BackendState(Mutex<Option<Child>>);
 
 fn path_str(p: &Path) -> &str {
@@ -143,6 +156,7 @@ fn start_backend(java: &Path, base: &Path, port: u16) -> Result<Child, String> {
         classpath.push_str(path_str(jar));
     }
 
+    let parent_pid = std::process::id().to_string();
     let mut command = Command::new(java);
     command
         .args([
@@ -152,6 +166,8 @@ fn start_backend(java: &Path, base: &Path, port: u16) -> Result<Child, String> {
             BACKEND_MAIN_CLASS,
             "--port",
             &port.to_string(),
+            "--parent-pid",
+            &parent_pid,
         ])
         .current_dir(base)
         .stdout(Stdio::piped())
@@ -204,6 +220,15 @@ fn log_path(app: &tauri::AppHandle) -> PathBuf {
         .unwrap_or_else(|_| std::env::temp_dir().join("prettyzk-desktop.log"))
 }
 
+fn rotate_log(path: &Path) {
+    if let Ok(metadata) = std::fs::metadata(path) {
+        if metadata.len() > 5 * 1024 * 1024 {
+            let backup = path.with_file_name("desktop.log.1");
+            let _ = std::fs::rename(path, backup);
+        }
+    }
+}
+
 fn append_log(path: &Path, line: &str) {
     if let Some(parent) = path.parent() {
         let _ = std::fs::create_dir_all(parent);
@@ -236,6 +261,7 @@ fn run_backend(
     window: &WebviewWindow,
     log: &Path,
 ) -> Result<(), String> {
+    rotate_log(log);
     let base = backend_dir(app)?;
     let java = find_java(&base)?;
     let mut child = start_backend(&java, &base, 0)?;
@@ -306,11 +332,35 @@ fn run_backend(
 
     let url = tauri::Url::parse(&format!("http://127.0.0.1:{}", port))
         .map_err(|e| format!("无效的后端地址: {e}"))?;
-    let window = window.clone();
+    let nav_window = window.clone();
     app.run_on_main_thread(move || {
-        let _ = window.navigate(url);
+        let _ = nav_window.navigate(url);
     })
     .map_err(|e| format!("无法切换窗口地址: {e}"))?;
+
+    // If the backend dies after startup, surface a banner instead of leaving
+    // a UI where every action silently fails.
+    let monitor_app = app.clone();
+    let monitor_window = window.clone();
+    std::thread::spawn(move || {
+        let mut failures = 0;
+        loop {
+            std::thread::sleep(Duration::from_secs(5));
+            if check_server(port) {
+                failures = 0;
+                continue;
+            }
+            failures += 1;
+            if failures >= 2 {
+                let handle = monitor_app.clone();
+                let win = monitor_window.clone();
+                let _ = handle.run_on_main_thread(move || {
+                    let _ = win.eval(BACKEND_LOST_SCRIPT);
+                });
+                break;
+            }
+        }
+    });
     Ok(())
 }
 
@@ -323,6 +373,7 @@ fn main() {
                 let _ = window.set_focus();
             }
         }))
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(BackendState(Mutex::new(None)))
         .setup(|app| {
             let window = WebviewWindowBuilder::new(

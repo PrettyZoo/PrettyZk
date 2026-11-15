@@ -40,8 +40,11 @@ export const api = {
 
   listNodes: (serverId: string, path = '/') =>
     request(`/api/nodes/${encodeURIComponent(serverId)}?path=${encodeURIComponent(path)}`),
-  listChildren: (serverId: string, path = '/') =>
-    request(`/api/nodes/${encodeURIComponent(serverId)}/children?path=${encodeURIComponent(path)}`),
+  listChildren: (serverId: string, path = '/', offset = 0, limit = 5000) =>
+    request(
+      `/api/nodes/${encodeURIComponent(serverId)}/children?path=${encodeURIComponent(path)}` +
+        `&offset=${offset}&limit=${limit}`,
+    ),
   getNodeDetail: (serverId: string, path = '/') =>
     request(`/api/nodes/${encodeURIComponent(serverId)}/detail?path=${encodeURIComponent(path)}`),
   createNode: (serverId: string, data: unknown) =>

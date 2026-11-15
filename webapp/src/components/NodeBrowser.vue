@@ -32,7 +32,7 @@
       </div>
 
       <div class="browse-split">
-        <div class="tree-panel">
+        <div class="tree-panel" :style="{ width: treeWidth + 'px' }">
           <div class="search-box">
             <input
               v-model="searchQuery"
@@ -49,6 +49,9 @@
               >
                 {{ r.path }}
               </div>
+              <div v-if="searchTruncated" class="search-truncated">
+                {{ t('node.searchTruncated') }}
+              </div>
             </div>
           </div>
 
@@ -62,6 +65,24 @@
             >
               <template #default="{ item }">
                 <div
+                  v-if="item.type === 'more'"
+                  class="tree-row tree-more"
+                  :style="{ paddingLeft: 8 + item.depth * 18 + 'px' }"
+                  @click="selectRow(item)"
+                >
+                  <span class="tree-arrow"></span>
+                  <span class="tree-icon">
+                    <Loader2
+                      v-if="loadingPaths.has(item.parentPath)"
+                      :size="13"
+                      class="tree-spinner"
+                    />
+                    <Plus v-else :size="13" />
+                  </span>
+                  <span class="tree-label tree-more-label">{{ t('node.loadMore') }}</span>
+                </div>
+                <div
+                  v-else
                   class="tree-row"
                   :class="{ selected: item.path === selectedNodePath }"
                   :style="{ paddingLeft: 8 + item.depth * 18 + 'px' }"
@@ -89,6 +110,8 @@
             <div v-else class="tree-empty">{{ t('node.empty') }}</div>
           </div>
         </div>
+
+        <div class="split-handle" @mousedown.prevent="startResize"></div>
 
         <DetailPanel
           v-if="selectedNode"
@@ -179,6 +202,8 @@ interface TreeRow {
   name: string
   depth: number
   numChildren: number
+  type?: 'node' | 'more'
+  parentPath?: string
 }
 
 const props = defineProps({ serverId: { type: String, required: true } })
@@ -191,15 +216,18 @@ const selectedNode = ref<any>(null)
 const nodeData = ref('')
 const searchQuery = ref('')
 const searchResults = ref<any[]>([])
+const searchTruncated = ref(false)
 const fourLetterCmd = ref('')
 const fourLetterOutput = ref('')
 const connecting = ref(true)
 const showAddForm = ref(false)
 const saving = ref(false)
+const treeWidth = ref(Number(localStorage.getItem('prettyzk.treeWidth')) || 300)
 
 const expanded = reactive(new Set<string>())
 const loadingPaths = reactive(new Set<string>())
 const childrenMap = reactive(new Map<string, TreeRow[]>())
+const hasMoreMap = reactive(new Map<string, boolean>())
 const rootNumChildren = ref(0)
 
 const visibleRows = computed<TreeRow[]>(() => {
@@ -210,6 +238,16 @@ const visibleRows = computed<TreeRow[]>(() => {
     const children = childrenMap.get(row.path)
     if (children) {
       for (const child of children) walk(child)
+    }
+    if (hasMoreMap.get(row.path)) {
+      rows.push({
+        type: 'more',
+        path: `__more__:${row.path}`,
+        name: '',
+        depth: row.depth + 1,
+        numChildren: 0,
+        parentPath: row.path,
+      })
     }
   }
   walk({ path: '/', name: '/', depth: 0, numChildren: rootNumChildren.value })
@@ -224,6 +262,7 @@ const ctxMenu = ref<{ show: boolean; x: number; y: number; node: TreeRow | null 
 })
 
 function onNodeContextMenu(event: MouseEvent, node: TreeRow) {
+  if (node.type === 'more') return
   ctxMenu.value = { show: true, x: event.clientX, y: event.clientY, node }
 }
 
@@ -315,27 +354,38 @@ function depthOf(path: string) {
 }
 
 function hasChildren(row: TreeRow) {
+  if (row.type === 'more') return false
   if (row.path === '/') return true
   if (!childrenMap.has(row.path)) return true
   return (childrenMap.get(row.path)?.length ?? 0) > 0
 }
 
-async function loadChildren(path: string, force = false) {
+async function loadChildren(path: string, force = false, offset = 0, append = false) {
   if (loadingPaths.has(path)) return
-  if (!force && childrenMap.has(path)) return
+  if (!force && offset === 0 && childrenMap.has(path)) return
   loadingPaths.add(path)
   try {
-    const data = await api.listChildren(props.serverId, path)
+    const data = await api.listChildren(props.serverId, path, offset)
     const depth = depthOf(path) + 1
-    const children: TreeRow[] = (data.children || []).map((name: string) => ({
-      path: path === '/' ? '/' + name : path + '/' + name,
-      name,
+    const page: TreeRow[] = (data.children || []).map((child: any) => ({
+      path: path === '/' ? '/' + child.name : path + '/' + child.name,
+      name: child.name,
       depth,
-      numChildren: 0,
+      numChildren: child.numChildren || 0,
     }))
-    childrenMap.set(path, children)
+    if (append) {
+      const existing = childrenMap.get(path)
+      if (existing) {
+        existing.push(...page)
+      } else {
+        childrenMap.set(path, page)
+      }
+    } else {
+      childrenMap.set(path, page)
+    }
+    hasMoreMap.set(path, !!data.hasMore)
     if (path === '/') {
-      rootNumChildren.value = children.length
+      rootNumChildren.value = data.total || 0
     }
   } catch (e: any) {
     toast(t('node.loadFailed', { msg: e.message }), 'error')
@@ -344,7 +394,16 @@ async function loadChildren(path: string, force = false) {
   }
 }
 
+async function loadMoreChildren(parent: string) {
+  const existing = childrenMap.get(parent) || []
+  await loadChildren(parent, true, existing.length, true)
+}
+
 async function toggleNode(row: TreeRow) {
+  if (row.type === 'more') {
+    if (row.parentPath) await loadMoreChildren(row.parentPath)
+    return
+  }
   if (expanded.has(row.path)) {
     expanded.delete(row.path)
     return
@@ -353,30 +412,69 @@ async function toggleNode(row: TreeRow) {
   await loadChildren(row.path)
 }
 
+async function ensureChildLoaded(parent: string, childPath: string) {
+  while (!(childrenMap.get(parent) || []).some((row) => row.path === childPath)) {
+    if (!childrenMap.has(parent)) {
+      await loadChildren(parent)
+    } else if (hasMoreMap.get(parent)) {
+      await loadMoreChildren(parent)
+    } else {
+      break
+    }
+  }
+}
+
 async function ensureExpanded(path: string) {
   await loadChildren('/')
   expanded.add('/')
   const parts = path.split('/').filter(Boolean)
   let current = '/'
   for (const part of parts) {
-    current = current === '/' ? '/' + part : current + '/' + part
-    await loadChildren(current)
+    const next = current === '/' ? '/' + part : current + '/' + part
+    await ensureChildLoaded(current, next)
     expanded.add(current)
+    current = next
   }
 }
 
 async function selectRow(row: TreeRow) {
+  if (row.type === 'more') {
+    if (row.parentPath) await loadMoreChildren(row.parentPath)
+    return
+  }
   await onSelectNode({ path: row.path })
 }
 
+function startResize(event: MouseEvent) {
+  const startX = event.clientX
+  const startWidth = treeWidth.value
+  const onMove = (moveEvent: MouseEvent) => {
+    const next = startWidth + moveEvent.clientX - startX
+    treeWidth.value = Math.min(640, Math.max(220, next))
+  }
+  const onUp = () => {
+    localStorage.setItem('prettyzk.treeWidth', String(treeWidth.value))
+    window.removeEventListener('mousemove', onMove)
+    window.removeEventListener('mouseup', onUp)
+  }
+  window.addEventListener('mousemove', onMove)
+  window.addEventListener('mouseup', onUp)
+}
+
+let selectSequence = 0
+
 async function onSelectNode(row: { path: string }) {
+  const sequence = ++selectSequence
   selectedNodePath.value = row.path
   try {
     const data = await api.getNodeDetail(props.serverId, row.path)
+    if (sequence !== selectSequence) return
     selectedNode.value = data
     nodeData.value = data.data || ''
   } catch (e: any) {
-    toast(t('node.loadFailed', { msg: e.message }), 'error')
+    if (sequence === selectSequence) {
+      toast(t('node.loadFailed', { msg: e.message }), 'error')
+    }
   }
 }
 
@@ -391,6 +489,7 @@ async function loadRoot() {
   expanded.clear()
   expanded.add('/')
   childrenMap.clear()
+  hasMoreMap.clear()
   await loadChildren('/')
 }
 
@@ -412,6 +511,7 @@ function scheduleRefresh(path: string) {
 
 async function refreshPath(path: string, expand = false) {
   childrenMap.delete(path)
+  hasMoreMap.delete(path)
   if (expand) expanded.add(path)
   if (path === '/' || expanded.has(path)) {
     await loadChildren(path, true)
@@ -423,12 +523,13 @@ async function sync() {
   try {
     const paths = new Set<string>(['/', ...expanded])
     childrenMap.clear()
+    hasMoreMap.clear()
     expanded.clear()
     expanded.add('/')
     for (const path of paths) {
       if (path !== '/') expanded.add(path)
-      await loadChildren(path, true)
     }
+    await Promise.all(Array.from(paths).map((path) => loadChildren(path, true)))
     if (selectedNodePath.value) {
       await onSelectNode({ path: selectedNodePath.value })
     }
@@ -508,19 +609,24 @@ function onSearch() {
   const query = searchQuery.value.trim()
   if (!query) {
     searchResults.value = []
+    searchTruncated.value = false
     return
   }
   searchTimer = setTimeout(async () => {
     try {
-      searchResults.value = (await api.searchNodes(props.serverId, query)) || []
+      const result = await api.searchNodes(props.serverId, query)
+      searchResults.value = result?.nodes || []
+      searchTruncated.value = !!result?.truncated
     } catch {
       searchResults.value = []
+      searchTruncated.value = false
     }
   }, 300)
 }
 
 async function selectSearchResult(path: string) {
   searchResults.value = []
+  searchTruncated.value = false
   searchQuery.value = ''
   await ensureExpanded(path)
   await onSelectNode({ path })
@@ -531,6 +637,7 @@ async function connectAndLoad() {
   selectedNode.value = null
   selectedNodePath.value = null
   childrenMap.clear()
+  hasMoreMap.clear()
   expanded.clear()
   expanded.add('/')
   try {
@@ -696,7 +803,7 @@ onUnmounted(() => {
   overflow: hidden;
 }
 .terminal-tab {
-  background: #1a1a1a;
+  background: var(--bg-primary);
 }
 .toolbar {
   display: flex;
@@ -743,6 +850,16 @@ onUnmounted(() => {
   display: flex;
   overflow: hidden;
 }
+.split-handle {
+  width: 4px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.12s;
+}
+.split-handle:hover {
+  background: var(--accent-light);
+}
 .detail-empty {
   flex: 1;
   display: flex;
@@ -752,7 +869,9 @@ onUnmounted(() => {
 }
 .tree-panel {
   width: 300px;
-  min-width: 240px;
+  min-width: 220px;
+  max-width: 640px;
+  flex-shrink: 0;
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
@@ -798,6 +917,12 @@ onUnmounted(() => {
 }
 .search-hit:hover {
   background: var(--bg-hover);
+}
+.search-truncated {
+  padding: 6px 12px;
+  border-top: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 11px;
 }
 .tree-scroll {
   flex: 1;
@@ -865,6 +990,7 @@ onUnmounted(() => {
   margin-right: 6px;
   font-weight: 500;
 }
+.tree-more-label { color: var(--accent); font-size: 12px; }
 .tree-spinner {
   animation: spin 0.9s linear infinite;
 }

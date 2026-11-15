@@ -2,6 +2,7 @@ package com.dujie.core.zookeeper.service;
 
 import com.dujie.core.configuration.entity.ServerConfiguration;
 import com.dujie.core.zookeeper.entity.FourLetterCommand;
+import com.dujie.core.zookeeper.entity.SearchResult;
 import com.dujie.core.zookeeper.entity.Terminal;
 import com.dujie.core.zookeeper.entity.Zookeeper;
 import com.dujie.core.zookeeper.factory.ZookeeperFactory;
@@ -82,6 +83,11 @@ public class ZookeeperDomainService {
         }
     }
 
+    public int getChildCount(String serverId, String path) {
+        assertZookeeperExists(serverId);
+        return zookeeperMap.get(serverId).getChildCount(path);
+    }
+
     /**
      * Get node data and stat for a given path.
      */
@@ -97,7 +103,7 @@ public class ZookeeperDomainService {
     /**
      * Search nodes by keyword.
      */
-    public List<ZkNode> search(String serverId, String keyword) {
+    public SearchResult search(String serverId, String keyword) {
         assertZookeeperExists(serverId);
         try {
             return zookeeperMap.get(serverId).search(keyword);

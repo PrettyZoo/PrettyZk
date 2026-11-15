@@ -84,6 +84,10 @@ public class Zookeeper {
     /**
      * Get children paths of a given path.
      */
+    public int getChildCount(String path) {
+        return connection.getChildCount(path);
+    }
+
     public List<String> getChildren(String path) throws Exception {
         CuratorFramework client = (CuratorFramework) connection.getClient();
         try {
@@ -118,17 +122,20 @@ public class Zookeeper {
     /**
      * Search nodes by keyword recursively from the root.
      */
-    public List<ZkNode> search(String keyword) throws Exception {
+    public SearchResult search(String keyword) throws Exception {
         CuratorFramework client = (CuratorFramework) connection.getClient();
         List<ZkNode> results = new java.util.ArrayList<>();
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-        searchRecursive(client, "/", keyword.toLowerCase(), results, deadline);
-        return results;
+        boolean[] truncated = {false};
+        searchRecursive(client, "/", keyword.toLowerCase(), results, deadline, truncated);
+        return new SearchResult(results, truncated[0]);
     }
 
     private void searchRecursive(CuratorFramework client, String path, String keyword,
-                                  List<ZkNode> results, long deadline) throws Exception {
+                                  List<ZkNode> results, long deadline,
+                                  boolean[] truncated) throws Exception {
         if (results.size() >= 100 || System.nanoTime() > deadline) {
+            truncated[0] = true;
             return;
         }
         if (path.toLowerCase().contains(keyword)) {
@@ -142,7 +149,7 @@ public class Zookeeper {
             List<String> children = client.getChildren().forPath(path);
             for (String child : children) {
                 String childPath = "/".equals(path) ? "/" + child : path + "/" + child;
-                searchRecursive(client, childPath, keyword, results, deadline);
+                searchRecursive(client, childPath, keyword, results, deadline, truncated);
             }
         } catch (Exception ignored) {
             // skip nodes that fail to list (e.g. ACL denied, no permission on sub-tree)

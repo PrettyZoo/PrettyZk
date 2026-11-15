@@ -6,6 +6,7 @@ import com.dujie.model.node.NodeMode;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.api.CreateBuilder;
 import org.apache.curator.framework.api.DeleteBuilder;
+import org.apache.curator.framework.recipes.cache.ChildData;
 import org.apache.curator.framework.recipes.cache.TreeCache;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.data.Stat;
@@ -13,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CuratorZookeeperConnection implements ZookeeperConnection<CuratorFramework> {
@@ -30,7 +32,9 @@ public class CuratorZookeeperConnection implements ZookeeperConnection<CuratorFr
     public CuratorZookeeperConnection(String id, CuratorFramework curatorFramework) {
         this.id = id;
         this.curatorFramework = curatorFramework;
-        treeCache = new TreeCache(curatorFramework, "/");
+        treeCache = TreeCache.newBuilder(curatorFramework, "/")
+                .setCacheData(false)
+                .build();
     }
 
     @Override
@@ -101,6 +105,12 @@ public class CuratorZookeeperConnection implements ZookeeperConnection<CuratorFr
         } else {
             log.info("ignore sync operation, because of {} [{}] has been sync", server, getId());
         }
+    }
+
+    @Override
+    public int getChildCount(String path) {
+        Map<String, ChildData> children = treeCache.getCurrentChildren(path);
+        return children == null ? -1 : children.size();
     }
 
     @Override

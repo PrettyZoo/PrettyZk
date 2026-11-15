@@ -72,7 +72,7 @@ tasks.register('jlinkRuntime', Exec) {
     }
     jlinkArgs += [
             '--add-modules', jlinkModules,
-            '--strip-debug', '--no-header-files', '--no-man-pages', '--compress=zip-6',
+            '--strip-debug', '--no-header-files', '--no-man-pages', '--compress=zip-9',
             '--output', outputDir.get().asFile.absolutePath
     ]
     commandLine jlinkArgs

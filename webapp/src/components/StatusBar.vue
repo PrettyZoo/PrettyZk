@@ -15,6 +15,7 @@
         :title="t('status.checkUpdate')"
         @click="checkUpdate"
       >
+        <span v-if="checking" class="status-spinner"></span>
         v{{ version || '3.0.0' }}
       </button>
       <span class="status-separator">·</span>
@@ -131,5 +132,21 @@ async function checkUpdate() {
 .status-version:disabled {
   opacity: 0.6;
   cursor: default;
+}
+.status-spinner {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 4px;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: status-spin 0.7s linear infinite;
+  vertical-align: -1px;
+}
+@keyframes status-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

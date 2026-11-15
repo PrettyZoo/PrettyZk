@@ -3,12 +3,31 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
+import { state } from '../state.ts'
 
 const props = defineProps({ serverId: { type: String, required: true } })
+
+const isDark = computed(() => state.config.theme === 'dark')
+
+function termTheme(dark: boolean) {
+  return dark
+    ? {
+        background: '#1a1b23',
+        foreground: '#e2e4ea',
+        cursor: '#4fd1c5',
+        selectionBackground: '#2f4f4a',
+      }
+    : {
+        background: '#ffffff',
+        foreground: '#1b1d23',
+        cursor: '#0f9d8a',
+        selectionBackground: '#dceff5',
+      }
+}
 
 const terminalContainer = ref(null)
 let term = null
@@ -25,11 +44,7 @@ onMounted(() => {
     cursorBlink: true,
     fontSize: 13,
     fontFamily: "'SF Mono', Monaco, Menlo, Consolas, monospace",
-    theme: {
-      background: '#1a1a1a',
-      foreground: '#e0e0e0',
-      cursor: '#e0e0e0',
-    },
+    theme: termTheme(isDark.value),
   })
 
   fitAddon = new FitAddon()
@@ -69,6 +84,10 @@ onMounted(() => {
   })
 
   connectWs()
+})
+
+watch(isDark, (dark) => {
+  if (term) term.options.theme = termTheme(dark)
 })
 
 // Reconnect when serverId changes (e.g., user switches servers in parent)
@@ -147,6 +166,6 @@ function writePrompt() {
 <style scoped>
 .terminal-wrapper {
   height: 100%;
-  background: #1a1a1a;
+  background: var(--bg-primary);
 }
 </style>
