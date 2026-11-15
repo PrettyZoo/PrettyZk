@@ -61,7 +61,7 @@
       </div>
     </div>
 
-    <div v-show="activeTab === 'terminal'" class="tab-panel terminal-tab">
+    <div v-if="activeTab === 'terminal'" class="tab-panel terminal-tab">
       <TerminalApp :server-id="serverId" />
     </div>
 

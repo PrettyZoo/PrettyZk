@@ -7,9 +7,11 @@ import com.dujie.app.web.api.ServerApi;
 import com.dujie.app.web.api.TerminalApi;
 import io.javalin.Javalin;
 import io.javalin.http.staticfiles.Location;
+import org.eclipse.jetty.websocket.api.exceptions.WebSocketTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.Map;
 
 public class PrettyZkWebServer {
@@ -43,6 +45,10 @@ public class PrettyZkWebServer {
 
     public void start(String host, int port) {
         app = Javalin.create(config -> {
+            // The desktop terminal can sit idle for a long time. Keep WebSocket
+            // connections alive instead of letting Jetty close them after 30s.
+            config.jetty.modifyWebSocketServletFactory(factory ->
+                    factory.setIdleTimeout(Duration.ofHours(24)));
             config.staticFiles.add(staticFiles -> {
                 staticFiles.hostedPath = "/web";
                 staticFiles.directory = "/web";
@@ -126,7 +132,14 @@ public class PrettyZkWebServer {
             ws.onConnect(terminalApi::onConnect);
             ws.onMessage(terminalApi::onMessage);
             ws.onClose(terminalApi::onClose);
-            ws.onError(ctx -> LOG.warn("Terminal WS error", ctx.error()));
+            ws.onError(ctx -> {
+                Throwable error = ctx.error();
+                if (error instanceof WebSocketTimeoutException) {
+                    LOG.debug("Terminal WS idle timeout");
+                } else {
+                    LOG.warn("Terminal WS error: {}", error.toString());
+                }
+            });
         });
 
         app.sse("/api/logs/stream", client -> logApi.onConnect(client));
