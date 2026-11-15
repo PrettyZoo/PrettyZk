@@ -106,8 +106,15 @@ fn backend_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
 }
 
 fn find_java(base: &Path) -> Result<PathBuf, String> {
-    if let Some(java) = java_binary(base) {
-        return Ok(java);
+    // A launch that races the installer may briefly see the Resources
+    // directory before java[.exe] is copied. Retry for a short window.
+    for attempt in 0..5 {
+        if let Some(java) = java_binary(base) {
+            return Ok(java);
+        }
+        if attempt < 4 {
+            std::thread::sleep(Duration::from_millis(300));
+        }
     }
 
     // Only development builds may fall back to a system Java installation.
