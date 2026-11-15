@@ -109,7 +109,7 @@ public class ZkCommandDispatcher {
         String path = pathArg(1, args);
         Stat stat = new Stat();
         byte[] data = zk.getData(path, false, stat);
-        out.write(new String(data, StandardCharsets.UTF_8) + "\n");
+        out.write((data == null ? "" : new String(data, StandardCharsets.UTF_8)) + "\n");
         out.write(stat.toString() + "\n");
     }
 
@@ -186,12 +186,16 @@ public class ZkCommandDispatcher {
         }
         List<ACL> acls = new ArrayList<>();
         for (String entry : args.get(2).split(";")) {
-            String[] parts = entry.split(":", 3);
-            if (parts.length != 3) {
+            int schemeEnd = entry.indexOf(':');
+            int permsStart = entry.lastIndexOf(':');
+            if (schemeEnd <= 0 || permsStart <= schemeEnd) {
                 out.write("Invalid ACL entry: " + entry + "\n");
                 return;
             }
-            acls.add(new ACL(parsePerms(parts[2]), new Id(parts[0], parts[1])));
+            String scheme = entry.substring(0, schemeEnd);
+            String id = entry.substring(schemeEnd + 1, permsStart);
+            String perms = entry.substring(permsStart + 1);
+            acls.add(new ACL(parsePerms(perms), new Id(scheme, id)));
         }
         zk.setACL(args.get(1), acls, -1);
         out.write("\n");

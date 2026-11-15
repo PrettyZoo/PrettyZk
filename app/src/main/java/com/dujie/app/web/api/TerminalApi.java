@@ -100,12 +100,16 @@ public class TerminalApi {
         TerminalSession session = sessions.remove(ctx);
         if (session != null) {
             LOG.debug("Terminal WS closed for server {}", session.serverId);
+            zookeeperDomainService.closeTerminal(session.serverId);
         }
     }
 
     public void onError(WsContext ctx, Throwable error) {
         LOG.error("Terminal WS error", error);
-        sessions.remove(ctx);
+        TerminalSession session = sessions.remove(ctx);
+        if (session != null) {
+            zookeeperDomainService.closeTerminal(session.serverId);
+        }
     }
 
     private static class TerminalSession {
