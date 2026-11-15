@@ -384,7 +384,7 @@ function depthOf(path: string) {
 }
 
 function hasChildren(row: TreeRow) {
-  if (row.type === 'more') return false
+  if (row.type === 'more' || row.type === 'search') return false
   if (row.path === '/') return true
   if (!childrenMap.has(row.path)) return true
   return (childrenMap.get(row.path)?.length ?? 0) > 0
@@ -443,13 +443,22 @@ async function toggleNode(row: TreeRow) {
 }
 
 async function ensureChildLoaded(parent: string, childPath: string) {
-  while (!(childrenMap.get(parent) || []).some((row) => row.path === childPath)) {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const children = childrenMap.get(parent)
+    if ((children || []).some((row) => row.path === childPath)) {
+      return
+    }
+    const before = children ? children.length : -1
     if (!childrenMap.has(parent)) {
       await loadChildren(parent)
     } else if (hasMoreMap.get(parent)) {
       await loadMoreChildren(parent)
     } else {
-      break
+      return
+    }
+    const after = childrenMap.get(parent)
+    if ((after ? after.length : -1) === before) {
+      return
     }
   }
 }
@@ -679,9 +688,11 @@ async function runFourLetterCmd() {
 }
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null
+let searchSequence = 0
 
 function onSearch() {
   if (searchTimer) clearTimeout(searchTimer)
+  const sequence = ++searchSequence
   const query = searchQuery.value.trim()
   if (!query) {
     searchResults.value = []
@@ -693,18 +704,23 @@ function onSearch() {
   searchTimer = setTimeout(async () => {
     try {
       const result = await api.searchNodes(props.serverId, query)
+      if (sequence !== searchSequence) return
       searchResults.value = result?.nodes || []
       searchTruncated.value = !!result?.truncated
     } catch {
+      if (sequence !== searchSequence) return
       searchResults.value = []
       searchTruncated.value = false
     } finally {
-      searchLoading.value = false
+      if (sequence === searchSequence) {
+        searchLoading.value = false
+      }
     }
   }, 300)
 }
 
 async function selectSearchResult(path: string) {
+  searchSequence++
   searchResults.value = []
   searchTruncated.value = false
   searchLoading.value = false
