@@ -58,7 +58,7 @@ public class NodeEventWsManager {
     }
 
     /**
-     * Tell clients that the initial TreeCache snapshot is ready. The frontend
+     * Tell clients that the initial CuratorCache snapshot is ready. The frontend
      * uses this to refresh child counts after connecting to a large tree.
      */
     public void broadcastReady(String serverId) {
