@@ -29,6 +29,8 @@ public class CuratorZookeeperConnection implements ZookeeperConnection<CuratorFr
 
     private final CuratorFramework curatorFramework;
 
+    private final CuratorFramework cacheClient;
+
     private final TreeCache treeCache;
 
     private final CountDownLatch treeReady = new CountDownLatch(1);
@@ -36,9 +38,15 @@ public class CuratorZookeeperConnection implements ZookeeperConnection<CuratorFr
     private AtomicBoolean isSync = new AtomicBoolean(false);
 
     public CuratorZookeeperConnection(String id, CuratorFramework curatorFramework) {
+        this(id, curatorFramework, null);
+    }
+
+    public CuratorZookeeperConnection(String id, CuratorFramework curatorFramework,
+                                      CuratorFramework cacheClient) {
         this.id = id;
         this.curatorFramework = curatorFramework;
-        treeCache = TreeCache.newBuilder(curatorFramework, "/")
+        this.cacheClient = cacheClient;
+        this.treeCache = cacheClient == null ? null : TreeCache.newBuilder(cacheClient, "/")
                 .setCacheData(false)
                 .build();
     }
@@ -85,7 +93,12 @@ public class CuratorZookeeperConnection implements ZookeeperConnection<CuratorFr
 
     @Override
     public void close() {
-        treeCache.close();
+        if (treeCache != null) {
+            treeCache.close();
+        }
+        if (cacheClient != null) {
+            cacheClient.close();
+        }
         curatorFramework.close();
         isSync.set(false);
     }
@@ -97,6 +110,9 @@ public class CuratorZookeeperConnection implements ZookeeperConnection<CuratorFr
 
     @Override
     public void sync(List<ZookeeperNodeListener> listeners) {
+        if (treeCache == null) {
+            return;
+        }
         final String server = curatorFramework.getZookeeperClient().getCurrentConnectionString();
         if (!isSync.get()) {
             log.debug("begin to sync tree node from {}", server);
@@ -115,17 +131,23 @@ public class CuratorZookeeperConnection implements ZookeeperConnection<CuratorFr
 
     @Override
     public int getChildCount(String path) {
+        if (treeCache == null) {
+            return -1;
+        }
         Map<String, ChildData> children = treeCache.getCurrentChildren(path);
         return children == null ? -1 : children.size();
     }
 
     @Override
     public boolean hasCache() {
-        return true;
+        return treeCache != null;
     }
 
     @Override
     public List<String> searchPaths(Pattern pattern, int limit) {
+        if (treeCache == null) {
+            return null;
+        }
         try {
             if (!treeReady.await(500, TimeUnit.MILLISECONDS)) {
                 return null;

@@ -45,6 +45,7 @@ public class CuratorZookeeperConnectionFactory implements ZookeeperConnectionFac
     @Override
     public ZookeeperConnection<CuratorFramework> createAsync(ZookeeperParams params, List<ServerListener> listener) {
         final CuratorFramework client = curatorFramework(params);
+        final CuratorFramework cacheClient = curatorFramework(params);
         client.getConnectionStateListenable().addListener(new ConnectionStateListener() {
             @Override
             public void stateChanged(CuratorFramework client, ConnectionState newState) {
@@ -76,17 +77,20 @@ public class CuratorZookeeperConnectionFactory implements ZookeeperConnectionFac
         });
 
         client.start();
+        cacheClient.start();
         try {
             int timeout = Math.max(params.getConnectionTimeout() / 1000, 5);
             if (!client.blockUntilConnected(timeout, TimeUnit.SECONDS)) {
                 client.close();
+                cacheClient.close();
                 throw new IllegalStateException("connect " + params.getUrl() + " timeout after " + timeout + "s");
             }
         } catch (InterruptedException e) {
             client.close();
+            cacheClient.close();
             throw new IllegalStateException("connect " + params.getUrl() + " failed", e);
         }
-        return new CuratorZookeeperConnection(params.getId(), client);
+        return new CuratorZookeeperConnection(params.getId(), client, cacheClient);
     }
 
     private CuratorFramework curatorFramework(ZookeeperParams params) {
