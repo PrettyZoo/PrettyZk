@@ -72,6 +72,34 @@ public class NodeApi {
     }
 
     /**
+     * GET /api/nodes/{serverId}/children?path=/
+     * Lightweight tree expansion payload: only child names are returned.
+     */
+    public void listChildren(Context ctx) {
+        String serverId = ctx.pathParam("serverId");
+        String path = ctx.queryParam("path");
+        if (path == null || path.isBlank()) {
+            path = "/";
+        }
+        if (path.contains("..")) {
+            ctx.status(400);
+            ctx.json(Map.of("error", "Invalid path"));
+            return;
+        }
+        try {
+            List<String> children = zookeeperDomainService.getChildren(serverId, path);
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("path", path);
+            result.put("children", children);
+            ctx.json(result);
+        } catch (Exception e) {
+            LOG.error("Failed to list children for server {} at {}", serverId, path, e);
+            ctx.status(500);
+            ctx.json(Map.of("error", "Failed to list children"));
+        }
+    }
+
+    /**
      * POST /api/nodes/{serverId}
      */
     public void createNode(Context ctx) {

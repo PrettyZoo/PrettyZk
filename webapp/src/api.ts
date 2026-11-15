@@ -40,6 +40,8 @@ export const api = {
 
   listNodes: (serverId: string, path = '/') =>
     request(`/api/nodes/${encodeURIComponent(serverId)}?path=${encodeURIComponent(path)}`),
+  listChildren: (serverId: string, path = '/') =>
+    request(`/api/nodes/${encodeURIComponent(serverId)}/children?path=${encodeURIComponent(path)}`),
   createNode: (serverId: string, data: unknown) =>
     request(`/api/nodes/${encodeURIComponent(serverId)}`, { method: 'POST', body: JSON.stringify(data) }),
   updateNode: (serverId: string, data: unknown) =>

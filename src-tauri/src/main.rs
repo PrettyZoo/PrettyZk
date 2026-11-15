@@ -164,6 +164,18 @@ fn start_backend(java: &Path, base: &Path, port: u16) -> Result<Child, String> {
         command.creation_flags(0x08000000);
     }
 
+    #[cfg(target_os = "linux")]
+    {
+        use std::os::unix::process::CommandExt;
+        // Ask the kernel to terminate Java if the desktop shell dies unexpectedly.
+        unsafe {
+            command.pre_exec(|| {
+                libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGTERM);
+                Ok(())
+            });
+        }
+    }
+
     command
         .spawn()
         .map_err(|e| format!("cannot start {}: {e}", java.display()))
@@ -304,6 +316,13 @@ fn run_backend(
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .manage(BackendState(Mutex::new(None)))
         .setup(|app| {
             let window = WebviewWindowBuilder::new(

@@ -12,6 +12,7 @@ import org.apache.zookeeper.data.Stat;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 public class Zookeeper {
@@ -120,13 +121,14 @@ public class Zookeeper {
     public List<ZkNode> search(String keyword) throws Exception {
         CuratorFramework client = (CuratorFramework) connection.getClient();
         List<ZkNode> results = new java.util.ArrayList<>();
-        searchRecursive(client, "/", keyword.toLowerCase(), results);
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        searchRecursive(client, "/", keyword.toLowerCase(), results, deadline);
         return results;
     }
 
     private void searchRecursive(CuratorFramework client, String path, String keyword,
-                                  List<ZkNode> results) throws Exception {
-        if (results.size() >= 100) {
+                                  List<ZkNode> results, long deadline) throws Exception {
+        if (results.size() >= 100 || System.nanoTime() > deadline) {
             return;
         }
         if (path.toLowerCase().contains(keyword)) {
@@ -140,7 +142,7 @@ public class Zookeeper {
             List<String> children = client.getChildren().forPath(path);
             for (String child : children) {
                 String childPath = "/".equals(path) ? "/" + child : path + "/" + child;
-                searchRecursive(client, childPath, keyword, results);
+                searchRecursive(client, childPath, keyword, results, deadline);
             }
         } catch (Exception ignored) {
             // skip nodes that fail to list (e.g. ACL denied, no permission on sub-tree)
