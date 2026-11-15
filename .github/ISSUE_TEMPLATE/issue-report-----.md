@@ -8,7 +8,7 @@ assignees: 'vran-dev'
 ## Info
 
 * Version: `latest`
-* App distribution: `prettyzoo-win.msi`
+* App distribution: `PrettyZk-Setup.exe` / `PrettyZk.dmg` / `PrettyZk.AppImage`
 * OS version: `win11`
 
 

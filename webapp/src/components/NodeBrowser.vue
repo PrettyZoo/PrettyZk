@@ -2,13 +2,13 @@
   <div class="node-browser">
     <div class="tab-bar">
       <div class="tab-item" :class="{ active: activeTab === 'browse' }" @click="activeTab = 'browse'">
-        <span class="tab-icon">📁</span> {{ t('node.browse') }}
+        <span class="tab-icon"><FolderTree :size="14" /></span> {{ t('node.browse') }}
       </div>
       <div class="tab-item" :class="{ active: activeTab === 'terminal' }" @click="activeTab = 'terminal'">
-        <span class="tab-icon">💻</span> {{ t('node.terminal') }}
+        <span class="tab-icon"><TerminalSquare :size="14" /></span> {{ t('node.terminal') }}
       </div>
       <div class="tab-item" :class="{ active: activeTab === '4lc' }" @click="activeTab = '4lc'">
-        <span class="tab-icon">🔧</span> {{ t('node.fourLetterCmd') }}
+        <span class="tab-icon"><Wrench :size="14" /></span> {{ t('node.fourLetterCmd') }}
       </div>
     </div>
 
@@ -17,13 +17,13 @@
         <div class="breadcrumb">
           <span class="crumb" @click="loadRoot">/</span>
           <template v-for="(part, i) in pathParts" :key="i">
-            <span class="crumb-sep">/</span>
+            <span class="crumb-sep"><ChevronRight :size="12" /></span>
             <span class="crumb" @click="navigateToPath(part.fullPath)">{{ part.name }}</span>
           </template>
         </div>
         <div class="toolbar-actions">
-          <button class="btn btn-small" @click="sync" :disabled="loading">⟳ {{ t('node.sync') }}</button>
-          <button class="btn btn-small btn-primary" @click="showAddDialog">+ {{ t('node.add') }}</button>
+          <button class="btn btn-small" @click="sync" :disabled="loading"><RefreshCw :size="13" /> {{ t('node.sync') }}</button>
+          <button class="btn btn-small btn-primary" @click="showAddDialog"><Plus :size="13" /> {{ t('node.add') }}</button>
         </div>
       </div>
       <div class="browse-split">
@@ -98,9 +98,11 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ChevronRight, FolderTree, Plus, RefreshCw, TerminalSquare, Wrench } from 'lucide-vue-next'
 import { api } from '../api.ts'
 import { t } from '../i18n.ts'
-import { state } from '../main.ts'
+import { state } from '../state.ts'
+import { toast, confirm } from '../composables/feedback.ts'
 import TerminalApp from './TerminalApp.vue'
 import DetailPanel from './DetailPanel.vue'
 import DialogForm from './DialogForm.vue'
@@ -138,8 +140,8 @@ function ctxMenuDelete() {
     if (!ok) return
     selectedNode.value = null; selectedNodePath.value = null
     api.deleteNode(props.serverId, n.path).then(() => {
-      window.__toast?.(t('node.deleted'), 'success'); refreshTree()
-    }).catch(e => { window.__toast?.(t('node.deleteFailed', { msg: e.message }), 'error') })
+      toast(t('node.deleted'), 'success'); refreshTree()
+    }).catch(e => { toast(t('node.deleteFailed', { msg: e.message }), 'error') })
   })
 }
 
@@ -180,28 +182,28 @@ async function loadTree(path = '/') {
     }
     return data
   } catch (e) {
-    window.__toast?.(t('node.loadFailed', { msg: e.message }), 'error')
+    toast(t('node.loadFailed', { msg: e.message }), 'error')
     return null
   } finally { loading.value = false }
 }
 
 function loadRoot() { loadTree('/'); selectedNodePath.value = null; selectedNode.value = null }
-function sync() { refreshTree(); window.__toast?.(t('node.synced'), 'success') }
+function sync() { refreshTree(); toast(t('node.synced'), 'success') }
 
 async function onSelectNode(node) {
   selectedNodePath.value = node.path
   try {
     const data = await api.listNodes(props.serverId, node.path)
     selectedNode.value = data; nodeData.value = data.data || ''
-  } catch (e) { window.__toast?.(t('node.loadFailed', { msg: e.message }), 'error') }
+  } catch (e) { toast(t('node.loadFailed', { msg: e.message }), 'error') }
 }
 
 async function saveData(data) {
   saving.value = true
   try {
     await api.updateNode(props.serverId, { path: selectedNodePath.value, data: data || nodeData.value })
-    window.__toast?.(t('node.dataSaved'), 'success')
-  } catch (e) { window.__toast?.(t('node.saveFailed', { msg: e.message }), 'error') }
+    toast(t('node.dataSaved'), 'success')
+  } catch (e) { toast(t('node.saveFailed', { msg: e.message }), 'error') }
   finally { saving.value = false }
 }
 
@@ -212,8 +214,8 @@ function deleteSelected() {
     const pathToDelete = selectedNodePath.value
     selectedNode.value = null; selectedNodePath.value = null
     api.deleteNode(props.serverId, pathToDelete).then(() => {
-      window.__toast?.(t('node.deleted'), 'success'); refreshTree()
-    }).catch(e => { window.__toast?.(t('node.deleteFailed', { msg: e.message }), 'error') })
+      toast(t('node.deleted'), 'success'); refreshTree()
+    }).catch(e => { toast(t('node.deleteFailed', { msg: e.message }), 'error') })
   })
 }
 
@@ -223,13 +225,13 @@ async function onAddNodeConfirm(form) {
   showAddForm.value = false
   try {
     await api.createNode(props.serverId, form)
-    window.__toast?.(t('node.created'), 'success'); refreshTree()
-  } catch (e) { window.__toast?.(t('node.deleteFailed', { msg: e.message }), 'error') }
+    toast(t('node.created'), 'success'); refreshTree()
+  } catch (e) { toast(t('node.createFailed', { msg: e.message }), 'error') }
 }
 
 async function runFourLetterCmd() {
   const cmd = fourLetterCmd.value.trim().toLowerCase()
-  if (!cmd || cmd.length !== 4) { window.__toast?.(t('node.enterCmd'), 'error'); return }
+  if (!cmd || cmd.length !== 4) { toast(t('node.enterCmd'), 'error'); return }
   fourLetterOutput.value = `Executing "${cmd}"...`
   try {
     const res = await api.execute4LC(props.serverId, cmd)
@@ -251,10 +253,8 @@ function onSearch() {
 function selectSearchResult(path) { searchResults.value = []; searchQuery.value = ''; onSelectNode({ path }) }
 function formatTime(ms) { return ms ? new Date(ms).toLocaleString() : '-' }
 
-function showDialog(title, msg) {
-  const d = window.__dialog
-  if (!d) return Promise.resolve(false)
-  return new Promise(r => { d.title = title; d.message = msg; d.show = true; d.resolve = r })
+function showDialog(title: string, msg: string) {
+  return confirm(title, msg)
 }
 
 async function connectAndLoad() {
@@ -264,7 +264,7 @@ async function connectAndLoad() {
     state.serverStatuses[props.serverId] = 'connected'
     connecting.value = false; loadTree('/')
   } catch (e) {
-    window.__toast?.('Connection failed: ' + e.message, 'error')
+    toast('Connection failed: ' + e.message, 'error')
     state.serverStatuses[props.serverId] = 'disconnected'
     connecting.value = false
   }
@@ -297,18 +297,19 @@ onUnmounted(() => { if (nodeWs) { nodeWs.close(); nodeWs = null } })
 </script>
 
 <style scoped>
+.node-browser { flex:1; display:flex; flex-direction:column; min-height:0; overflow:hidden; }
 .tab-bar { display:flex; background:var(--header-bg); border-bottom:1px solid var(--border-color); padding:0 8px; flex-shrink:0; }
 .tab-item { display:flex; align-items:center; gap:5px; padding:10px 16px; cursor:pointer; font-size:12px; font-weight:500; color:var(--text-secondary); border-bottom:2px solid transparent; transition:all 0.12s; margin-bottom:-1px; }
 .tab-item:hover { color:var(--text-primary); background:var(--bg-hover); border-radius:6px 6px 0 0; }
 .tab-item.active { color:var(--accent); border-bottom-color:var(--accent); background:transparent; }
-.tab-icon { font-size:13px; }
+.tab-icon { display:inline-flex; align-items:center; }
 .tab-panel { flex:1; display:flex; flex-direction:column; overflow:hidden; }
 .terminal-tab { background:#1a1a1a; }
 .toolbar { display:flex; align-items:center; padding:7px 16px; background:var(--toolbar-bg); border-bottom:1px solid var(--border-color); gap:8px; min-height:40px; flex-shrink:0; }
 .breadcrumb { font-size:13px; color:var(--text-secondary); flex:1; display:flex; align-items:center; flex-wrap:wrap; }
-.crumb { cursor:pointer; color:var(--accent); padding:2px 5px; border-radius:4px; font-size:12px; }
+.crumb { cursor:pointer; color:var(--accent); padding:2px 5px; border-radius:4px; font-size:12px; display:inline-flex; align-items:center; }
 .crumb:hover { background:var(--accent-subtle); }
-.crumb-sep { color:var(--text-muted); padding:0 2px; font-size:11px; }
+.crumb-sep { color:var(--text-muted); padding:0 2px; display:inline-flex; align-items:center; }
 .toolbar-actions { display:flex; gap:4px; }
 .browse-split { flex:1; display:flex; overflow:hidden; }
 .detail-empty { flex:1; display:flex; align-items:center; justify-content:center; color:var(--text-muted); }

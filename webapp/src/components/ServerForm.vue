@@ -1,98 +1,108 @@
 <template>
   <div class="form-panel">
-    <h2 style="margin-bottom:20px">{{ isEdit ? t('server.editServer') : t('server.newServer') }}</h2>
-
-    <div class="form-row">
-      <div class="form-group">
-        <label>{{ t('server.host') }}</label>
-        <input v-model="form.host" type="text" placeholder="localhost" />
+    <div class="form-header">
+      <div>
+        <h2>{{ isEdit ? t('server.editServer') : t('server.newServer') }}</h2>
+        <p class="form-subtitle">{{ isEdit ? form.host + ':' + form.port : t('welcome.newConnDesc') }}</p>
       </div>
-      <div class="form-group" style="max-width:120px">
-        <label>{{ t('server.port') }}</label>
-        <input v-model.number="form.port" type="number" placeholder="2181" />
-      </div>
+      <n-button quaternary size="small" @click="$emit('cancel')">
+        <template #icon><ArrowLeft :size="15" /></template>
+        {{ t('server.cancel') }}
+      </n-button>
     </div>
 
-    <div class="form-group">
-      <label>{{ t('server.alias') }}</label>
-      <input v-model="form.alias" type="text" placeholder="My Server" />
-    </div>
-
-    <div class="form-group">
-      <label>{{ t('server.acl') }}</label>
-      <textarea v-model="form.acl" placeholder="digest:user:password:cdrwa"></textarea>
-    </div>
-
-    <div class="form-group inline">
-      <label class="toggle-switch">
-        <input v-model="form.sshEnabled" type="checkbox" />
-        <span class="toggle-slider"></span>
-      </label>
-      <span>{{ t('server.sshTunnel') }}</span>
-    </div>
-
-    <div v-if="form.sshEnabled" id="ssh-config">
+    <n-form :model="form" label-placement="top" :show-require-mark="false" class="server-form">
       <div class="form-row">
-        <div class="form-group">
-          <label>{{ t('server.sshHost') }}</label>
-          <input v-model="form.sshHost" type="text" />
+        <n-form-item :label="t('server.host')" class="grow">
+          <n-input v-model:value="form.host" placeholder="localhost" />
+        </n-form-item>
+        <n-form-item :label="t('server.port')" class="port">
+          <n-input-number v-model:value="form.port" :min="1" :max="65535" style="width: 100%" />
+        </n-form-item>
+      </div>
+
+      <n-form-item :label="t('server.alias')">
+        <n-input v-model:value="form.alias" placeholder="My Server" />
+      </n-form-item>
+
+      <n-form-item :label="t('server.acl')">
+        <n-input
+          v-model:value="form.acl"
+          type="textarea"
+          :autosize="{ minRows: 2, maxRows: 4 }"
+          placeholder="digest:user:password:cdrwa"
+        />
+      </n-form-item>
+
+      <n-form-item :label="t('server.sshTunnel')">
+        <n-switch v-model:value="form.sshEnabled" />
+      </n-form-item>
+
+      <div v-if="form.sshEnabled" class="ssh-section">
+        <div class="form-row">
+          <n-form-item :label="t('server.sshHost')" class="grow">
+            <n-input v-model:value="form.sshHost" />
+          </n-form-item>
+          <n-form-item :label="t('server.sshPort')" class="port">
+            <n-input-number v-model:value="form.sshPort" :min="1" :max="65535" style="width: 100%" />
+          </n-form-item>
         </div>
-        <div class="form-group" style="max-width:100px">
-          <label>{{ t('server.sshPort') }}</label>
-          <input v-model.number="form.sshPort" type="number" value="22" />
+        <n-form-item :label="t('server.sshUser')">
+          <n-input v-model:value="form.sshUsername" />
+        </n-form-item>
+        <n-form-item :label="t('server.sshPass')">
+          <n-input v-model:value="form.sshPassword" type="password" show-password-on="click" />
+        </n-form-item>
+        <div class="form-row">
+          <n-form-item :label="t('server.remoteHost')" class="grow">
+            <n-input v-model:value="form.remoteHost" placeholder="127.0.0.1" />
+          </n-form-item>
+          <n-form-item :label="t('server.remotePort')" class="port">
+            <n-input-number v-model:value="form.remotePort" :min="1" :max="65535" style="width: 100%" />
+          </n-form-item>
         </div>
       </div>
-      <div class="form-group">
-        <label>{{ t('server.sshUser') }}</label>
-        <input v-model="form.sshUsername" type="text" />
-      </div>
-      <div class="form-group">
-        <label>{{ t('server.sshPass') }}</label>
-        <input v-model="form.sshPassword" type="password" />
+
+      <n-form-item :label="t('server.zkVersion')" class="version">
+        <n-select v-model:value="form.zkVersion" :options="zkOptions" />
+      </n-form-item>
+
+      <div class="section-title">{{ t('server.advConfig') }}</div>
+      <div class="form-row">
+        <n-form-item :label="t('server.connTimeout')" class="grow">
+          <n-input-number v-model:value="form.connTimeout" :min="1000" style="width: 100%" />
+        </n-form-item>
+        <n-form-item :label="t('server.sessionTimeout')" class="grow">
+          <n-input-number v-model:value="form.sessionTimeout" :min="1000" style="width: 100%" />
+        </n-form-item>
       </div>
       <div class="form-row">
-        <div class="form-group">
-          <label>{{ t('server.remoteHost') }}</label>
-          <input v-model="form.remoteHost" type="text" placeholder="127.0.0.1" />
-        </div>
-        <div class="form-group" style="max-width:100px">
-          <label>{{ t('server.remotePort') }}</label>
-          <input v-model.number="form.remotePort" type="number" value="2181" />
-        </div>
+        <n-form-item :label="t('server.maxRetries')" class="grow">
+          <n-input-number v-model:value="form.maxRetries" :min="0" style="width: 100%" />
+        </n-form-item>
+        <n-form-item :label="t('server.retryInterval')" class="grow">
+          <n-input-number v-model:value="form.retryInterval" :min="0" style="width: 100%" />
+        </n-form-item>
       </div>
-    </div>
 
-    <div class="form-group" style="max-width:200px">
-      <label>{{ t('server.zkVersion') }}</label>
-      <select v-model="form.zkVersion">
-        <option value="auto">{{ t('server.zkVersionAuto') }}</option>
-        <option value="3.4">{{ t('server.zkVersion34') }}</option>
-        <option value="3.5">{{ t('server.zkVersion35') }}</option>
-        <option value="3.6">{{ t('server.zkVersion36') }}</option>
-      </select>
-    </div>
-
-    <h3 style="margin:16px 0 8px;font-size:13px">{{ t('server.advConfig') }}</h3>
-    <div class="form-row">
-      <div class="form-group"><label>{{ t('server.connTimeout') }}</label><input v-model.number="form.connTimeout" type="number" /></div>
-      <div class="form-group"><label>{{ t('server.sessionTimeout') }}</label><input v-model.number="form.sessionTimeout" type="number" /></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label>{{ t('server.maxRetries') }}</label><input v-model.number="form.maxRetries" type="number" /></div>
-      <div class="form-group"><label>{{ t('server.retryInterval') }}</label><input v-model.number="form.retryInterval" type="number" /></div>
-    </div>
-
-    <div class="form-actions">
-      <button class="btn btn-primary" @click="save" :disabled="saving">{{ saving ? '...' : t('server.save') }}</button>
-      <button class="btn" @click="$emit('cancel')">{{ t('server.cancel') }}</button>
-    </div>
+      <div class="form-actions">
+        <n-button type="primary" :loading="saving" @click="save">
+          <template #icon><Save :size="15" /></template>
+          {{ t('server.save') }}
+        </n-button>
+        <n-button @click="$emit('cancel')">{{ t('server.cancel') }}</n-button>
+      </div>
+    </n-form>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { NButton, NForm, NFormItem, NInput, NInputNumber, NSelect, NSwitch } from 'naive-ui'
+import { ArrowLeft, Save } from 'lucide-vue-next'
 import { api } from '../api.ts'
 import { t } from '../i18n.ts'
+import { toast } from '../composables/feedback.ts'
 
 const props = defineProps({ serverId: { type: String, default: null } })
 const emit = defineEmits(['saved', 'cancel'])
@@ -101,35 +111,54 @@ const isEdit = ref(!!props.serverId)
 const saving = ref(false)
 
 const form = reactive({
-  host: 'localhost', port: 2181, alias: '', acl: '',
-  sshEnabled: false, sshHost: '', sshPort: 22, sshUsername: '', sshPassword: '',
-  remoteHost: '', remotePort: 2181,
-  connTimeout: 60000, sessionTimeout: 60000, maxRetries: 3, retryInterval: 1000, zkVersion: 'auto',
+  host: 'localhost',
+  port: 2181,
+  alias: '',
+  acl: '',
+  sshEnabled: false,
+  sshHost: '',
+  sshPort: 22,
+  sshUsername: '',
+  sshPassword: '',
+  remoteHost: '',
+  remotePort: 2181,
+  connTimeout: 60000,
+  sessionTimeout: 60000,
+  maxRetries: 3,
+  retryInterval: 1000,
+  zkVersion: 'auto',
 })
 
+const zkOptions = computed(() => [
+  { label: t('server.zkVersionAuto'), value: 'auto' },
+  { label: t('server.zkVersion34'), value: '3.4' },
+  { label: t('server.zkVersion35'), value: '3.5' },
+  { label: t('server.zkVersion36'), value: '3.6' },
+])
+
 onMounted(async () => {
-  if (props.serverId) {
-    try {
-      const s = await api.getServer(props.serverId)
-      form.host = s.host || 'localhost'
-      form.port = s.port || 2181
-      form.alias = s.alias || ''
-      form.acl = s.acl || ''
-      form.sshEnabled = s.sshEnabled || false
-      if (s.sshEnabled) {
-        form.sshHost = s.sshHost || ''
-        form.sshPort = s.sshPort || 22
-        form.sshUsername = s.sshUsername || ''
-        form.remoteHost = s.remoteHost || ''
-        form.remotePort = s.remotePort || 2181
-      }
-      if (s.connectionTimeout) form.connTimeout = s.connectionTimeout
-      if (s.sessionTimeout) form.sessionTimeout = s.sessionTimeout
-      if (s.maxRetries) form.maxRetries = s.maxRetries
-      if (s.retryIntervalTime) form.retryInterval = s.retryIntervalTime
-    } catch (e) {
-      window.__toast?.(t('server.loadFailed', { msg: e.message }), 'error')
+  if (!props.serverId) return
+  try {
+    const s = await api.getServer(props.serverId)
+    form.host = s.host || 'localhost'
+    form.port = s.port || 2181
+    form.alias = s.alias || ''
+    form.acl = s.acl || ''
+    form.sshEnabled = s.sshEnabled || false
+    if (s.sshEnabled) {
+      form.sshHost = s.sshHost || ''
+      form.sshPort = s.sshPort || 22
+      form.sshUsername = s.sshUsername || ''
+      form.remoteHost = s.remoteHost || ''
+      form.remotePort = s.remotePort || 2181
     }
+    if (s.connectionTimeout) form.connTimeout = s.connectionTimeout
+    if (s.sessionTimeout) form.sessionTimeout = s.sessionTimeout
+    if (s.maxRetries != null) form.maxRetries = s.maxRetries
+    if (s.retryIntervalTime != null) form.retryInterval = s.retryIntervalTime
+    if (s.zkVersion) form.zkVersion = s.zkVersion
+  } catch (e: any) {
+    toast(t('server.loadFailed', { msg: e.message }), 'error')
   }
 })
 
@@ -138,20 +167,28 @@ async function save() {
   try {
     const data = {
       id: props.serverId || '',
-      zkHost: form.host, zkPort: form.port, zkAlias: form.alias, acl: form.acl,
+      zkHost: form.host,
+      zkPort: form.port,
+      zkAlias: form.alias,
+      acl: form.acl,
       sshEnabled: form.sshEnabled,
-      sshHost: form.sshHost, sshPort: form.sshPort,
-      sshUsername: form.sshUsername, sshPassword: form.sshPassword,
-      remoteHost: form.remoteHost, remotePort: form.remotePort,
-      connectionTimeout: form.connTimeout, sessionTimeout: form.sessionTimeout,
-      maxRetries: form.maxRetries, retryIntervalTime: form.retryInterval,
+      sshHost: form.sshHost,
+      sshPort: form.sshPort,
+      sshUsername: form.sshUsername,
+      sshPassword: form.sshPassword,
+      remoteHost: form.remoteHost,
+      remotePort: form.remotePort,
+      connectionTimeout: form.connTimeout,
+      sessionTimeout: form.sessionTimeout,
+      maxRetries: form.maxRetries,
+      retryIntervalTime: form.retryInterval,
       zkVersion: form.zkVersion,
     }
     const result = await api.saveServer(data)
-    window.__toast?.(t('server.saved'), 'success')
+    toast(t('server.saved'), 'success')
     emit('saved', result.id)
-  } catch (e) {
-    window.__toast?.(t('server.saveFailed', { msg: e.message }), 'error')
+  } catch (e: any) {
+    toast(t('server.saveFailed', { msg: e.message }), 'error')
   } finally {
     saving.value = false
   }
@@ -159,19 +196,68 @@ async function save() {
 </script>
 
 <style scoped>
-.form-panel { padding: 24px; overflow-y: auto; height: 100%; }
-.form-group { margin-bottom: 14px; }
-.form-group label { display: block; margin-bottom: 4px; font-size: 12px; font-weight: 500; color: var(--text-secondary); }
-.form-group input, .form-group textarea, .form-group select {
-  width: 100%; padding: 8px 10px;
-  border: 1px solid var(--input-border); border-radius: 4px;
-  background: var(--input-bg); color: var(--text-primary);
-  font-size: 13px; outline: none; transition: border-color 0.15s;
+.form-panel {
+  padding: 22px 28px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
-.form-group input:focus, .form-group textarea:focus { border-color: var(--input-focus); }
-.form-group textarea { min-height: 60px; resize: vertical; font-family: monospace; font-size: 12px; }
-.form-group.inline { display: flex; gap: 8px; align-items: center; }
-.form-row { display: flex; gap: 12px; }
-.form-row .form-group { flex: 1; }
-.form-actions { display: flex; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border-color); }
+.form-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.form-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 650;
+  color: var(--text-primary);
+}
+.form-subtitle {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.server-form {
+  max-width: 620px;
+}
+.form-row {
+  display: flex;
+  gap: 12px;
+}
+.grow {
+  flex: 1;
+}
+.port {
+  width: 120px;
+  flex-shrink: 0;
+}
+.version {
+  width: 220px;
+}
+.ssh-section {
+  padding: 10px 12px 2px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+}
+.section-title {
+  margin: 6px 0 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.form-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 14px;
+  margin-top: 6px;
+  border-top: 1px solid var(--border-color);
+}
 </style>

@@ -332,6 +332,7 @@
         <module name="RedundantImport"/>
         <module name="UnusedImports"/>
         <module name="EmptyLineSeparator">
+            <property name="allowNoEmptyLineBetweenFields" value="true"/>
             <property name="allowMultipleEmptyLines" value="false"/>
             <property name="allowMultipleEmptyLinesInsideClassMembers" value="false"/>
         </module>

@@ -41,7 +41,7 @@ a:hover { text-decoration: underline; }
   --sidebar-text: #5a5a6a;
   --sidebar-hover: #e4e6eb;
   --sidebar-active: #469F95;
-  --sidebar-width: 270px;
+  --sidebar-width: 280px;
   --node-ephemeral: #e6a817;
   --scrollbar-thumb: #c4c6ce;
   --scrollbar-track: #edeef1;

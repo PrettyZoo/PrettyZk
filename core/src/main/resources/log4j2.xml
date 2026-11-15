@@ -1,33 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/">
-    <appenders>
+<Configuration status="WARN">
+    <Appenders>
         <Console name="Console" target="SYSTEM_OUT">
             <PatternLayout pattern="[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%-5p] %l - %m%n"/>
         </Console>
 
-        <RollingFile name="RollingFile" fileName="${sys:user.home}/.prettyZoo/log/prettyZoo.log"
+        <RollingFile name="RollingFile"
+                     fileName="${sys:user.home}/.prettyZoo/log/prettyZoo.log"
                      filePattern="${sys:user.home}/.prettyZoo/prettyZoo.%d{yyyy-MM-dd}.log">
             <PatternLayout pattern="[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%-5p] %l - %m%n"/>
-            <policies>
+            <Policies>
                 <TimeBasedTriggeringPolicy/>
                 <SizeBasedTriggeringPolicy size="25 MB"/>
-            </policies>
+            </Policies>
             <DefaultRolloverStrategy max="3">
                 <Delete basePath="${sys:user.home}/.prettyZoo/log/" maxDepth="1">
                     <IfFileName glob="prettyZoo.*.log"/>
                 </Delete>
-                <!-- compatibility -->
+                <!-- compatibility with old log location -->
                 <Delete basePath="${sys:user.home}/.prettyZoo/" maxDepth="1">
                     <IfFileName glob="prettyZoo.*.log"/>
                 </Delete>
             </DefaultRolloverStrategy>
         </RollingFile>
-    </appenders>
-    <loggers>
-        <logger name="cc.cc1234.main" level="INFO"/>
-        <root level="INFO">
-            <appender-ref ref="RollingFile"/>
-            <appender-ref ref="Console"/>
-        </root>
-    </loggers>
-</log4j:configuration>
+    </Appenders>
+
+    <Loggers>
+        <Logger name="com.dujie.app" level="INFO"/>
+        <Root level="INFO">
+            <AppenderRef ref="RollingFile"/>
+            <AppenderRef ref="Console"/>
+        </Root>
+    </Loggers>
+</Configuration>

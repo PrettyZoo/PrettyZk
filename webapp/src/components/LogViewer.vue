@@ -1,5 +1,5 @@
 <template>
-  <div style="display:flex;flex-direction:column;height:100%">
+  <div style="display:flex;flex-direction:column;flex:1;min-height:0">
     <div class="toolbar">
       <div class="breadcrumb">{{ t('log.title') }}</div>
       <div class="toolbar-actions">

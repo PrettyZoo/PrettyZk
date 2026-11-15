@@ -32,46 +32,46 @@
 
 ### Prerequisites
 
-- Java 21+
-- Rust (for Tauri build)
-- WebView2 (Windows only, auto-installed by MSI)
+- JDK 21 (LTS)
+- Node.js 22
+- Rust stable (for the Tauri shell)
 
-### Build & Run
-
-```bash
-# 1. Build frontend
-cd webapp && npm install && npm run build
-
-# 2. Build backend distribution
-./gradlew :app:installDist
-
-# 3. Build and run desktop app
-cd src-tauri
-cargo build --release
-./target/release/prettyzoo
-```
-
-### Development (without Tauri)
+### Build & Install
 
 ```bash
-# Build frontend
-cd webapp && npm install && npm run build
-
-# Start backend
-cd .. && app/build/install/app/bin/app
-# Open http://127.0.0.1:{port} in browser for dev
+npm install
+npm run prepare          # UI + backend jars + minimal JRE -> build/desktop
+npm run smoke            # starts the bundled JRE and checks /api/health
+npx tauri build --bundles dmg   # macOS; use --bundles nsis on Windows
 ```
 
-### Package Installer
+The installer is self-contained: it ships the JDK runtime, all Java jars,
+WebView2 (Windows, offline installer) and the VC++ runtime. End users do not
+need Java, Node, Rust, or an internet connection.
+
+### Development
 
 ```bash
-# macOS
-./scripts/build-installer.sh
+# Option A: full desktop shell (splash + embedded backend)
+npm run prepare
+npm run dev
 
-# Windows (requires NSIS and WiX Toolset)
-cd src-tauri && npx tauri build
-# Output: src-tauri/target/release/bundle/msi/
+# Option B: browser UI + backend only
+app/build/install/app/bin/app --port 8080
+npm run web:dev          # http://localhost:5173, proxies /api and /ws to 8080
 ```
+
+### Release (all platforms at once)
+
+```bash
+git tag v3.0.1
+git push origin v3.0.1
+```
+
+A single GitHub Actions matrix builds macOS arm64/x64, Windows x64 and
+Linux x64, then attaches every installer to one draft release. Native
+installers cannot be reliably cross-built from macOS, so CI is the supported
+way to produce all platforms in one run.
 
 ## 📦 Tech Stack
 
@@ -84,7 +84,7 @@ cd src-tauri && npx tauri build
 | Editor | CodeMirror 6 |
 | Terminal | xterm.js |
 | ZK Client | Apache Curator 5.x |
-| Build | Gradle + jlink |
+| Build | Gradle 8.10 + jlink 21 |
 
 ## 🔄 Relationship to PrettyZoo
 
@@ -98,7 +98,7 @@ PrettyZk is a UI modernization of [PrettyZoo](https://github.com/PrettyZoo/Prett
 | Terminal | JavaFX TextArea | xterm.js |
 | Theme | CSS file swap | CSS variables |
 | i18n | Java ResourceBundle | Vue reactive i18n |
-| Backend (core/spec) | Same ✅ | Same ✅ |
+| Backend (model/client/core/app) | Same ✅ | Same ✅ |
 
 ## 📄 License
 

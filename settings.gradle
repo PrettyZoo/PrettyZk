@@ -1,5 +1,5 @@
 rootProject.name = 'PrettyZk'
-include 'app'
+include 'model'
+include 'client'
 include 'core'
-include 'specification'
-include 'specification-impl'
+include 'app'

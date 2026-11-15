@@ -4,16 +4,20 @@
          :style="{ paddingLeft: (8 + depth * 18) + 'px' }"
          @contextmenu.prevent="$emit('node-ctx', $event, node)">
       <span class="tree-arrow" :class="{ expanded: expanded }" @click.stop="toggleExpand">
-        ▶
+        <ChevronRight :size="12" />
       </span>
-      <span class="tree-icon">{{ node.ephemeral ? '⚡' : (expanded ? '📂' : '📁') }}</span>
+      <span class="tree-icon">
+        <Zap v-if="node.ephemeral" :size="14" />
+        <FolderOpen v-else-if="expanded" :size="14" />
+        <Folder v-else :size="14" />
+      </span>
       <span class="tree-label" @click.stop="$emit('select', node)">{{ node.name }}</span>
       <span class="tree-badge" v-if="node.numChildren > 0 && !childrenLoaded">{{ node.numChildren }}</span>
-      <span v-if="loading" class="tree-loading"> ⟳</span>
+      <span v-if="loading" class="tree-loading"><Loader2 :size="13" class="tree-spinner" /></span>
     </div>
-    <div v-if="expanded && children.length > 0" class="tree-children-area">
+    <div v-if="expanded && visibleChildren.length > 0" class="tree-children-area">
       <TreeNode
-        v-for="child in children" :key="child.path"
+        v-for="child in visibleChildren" :key="child.path"
         :node="child"
         :depth="depth + 1"
         :selected-path="selectedPath"
@@ -24,6 +28,11 @@
         @node-ctx="(e, n) => $emit('node-ctx', e, n)"
       />
     </div>
+    <div v-if="expanded && children.length > displayed" class="tree-more" :style="{ paddingLeft: (8 + (depth + 1) * 18) + 'px' }">
+      <button class="tree-more-btn" @click.stop="displayed += 500">
+        {{ t('node.showMore') }}（{{ displayed }} / {{ children.length }}）
+      </button>
+    </div>
     <div v-if="expanded && !loading && children.length === 0" class="tree-empty-child">
       <span class="tree-label" :style="{ paddingLeft: (8 + (depth + 1) * 18) + 'px' }">({{ t('node.empty') }})</span>
     </div>
@@ -31,9 +40,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { ChevronRight, Folder, FolderOpen, Loader2, Zap } from 'lucide-vue-next'
 import { api } from '../api.ts'
 import { t } from '../i18n.ts'
+import { toast } from '../composables/feedback.ts'
 
 const props = defineProps({
   node: { type: Object, required: true },
@@ -48,6 +59,8 @@ const expanded = ref(false)
 const children = ref([])
 const childrenLoaded = ref(false)
 const loading = ref(false)
+const displayed = ref(500)
+const visibleChildren = computed(() => children.value.slice(0, displayed.value))
 
 // When refreshKey changes, reload children if this node is currently expanded
 watch(() => props.refreshKey, () => {
@@ -89,6 +102,7 @@ async function reloadChildren() {
     const sid = props.serverId
     if (!sid) return
     const data = await api.listNodes(sid, props.node.path)
+    displayed.value = 500
     children.value = (data.children || []).map(c => ({
       ...c,
       name: c.path.substring(c.path.lastIndexOf('/') + 1) || c.name || c.path,
@@ -96,7 +110,7 @@ async function reloadChildren() {
     childrenLoaded.value = true
   } catch (e) {
     console.warn('Failed to load children:', e)
-    window.__toast?.('Failed to load children: ' + e.message, 'error')
+    toast('Failed to load children: ' + e.message, 'error')
   } finally {
     loading.value = false
   }
@@ -116,13 +130,18 @@ async function reloadChildren() {
 .tree-node.selected { background: var(--bg-selected); border-left-color: var(--accent); }
 .tree-node.selected:hover { background: var(--bg-selected); filter: brightness(1.1); }
 .tree-node.ephemeral { color: var(--node-ephemeral); }
-.tree-arrow { width: 16px; text-align: center; flex-shrink: 0; font-size: 8px; color: var(--text-muted); cursor: pointer; transition: transform 0.15s, color 0.15s; }
+.tree-arrow { width: 16px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--text-muted); cursor: pointer; transition: transform 0.15s, color 0.15s; }
 .tree-arrow:hover { color: var(--text-secondary); }
 .tree-arrow.expanded { transform: rotate(90deg); }
-.tree-icon { width: 18px; text-align: center; flex-shrink: 0; font-size: 13px; }
+.tree-icon { width: 18px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--text-muted); }
 .tree-label { overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; font-size: 13px; }
 .tree-badge { font-size: 10px; padding: 0 6px; border-radius: 8px; background: var(--bg-tertiary); color: var(--text-muted); flex-shrink: 0; margin-left: auto; font-weight: 500; }
-.tree-loading { color: var(--accent); font-size: 12px; flex-shrink: 0; }
+.tree-loading { color: var(--accent); flex-shrink: 0; display: inline-flex; align-items: center; }
+.tree-spinner { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .tree-children-area { }
 .tree-empty-child { padding: 3px 0 3px 0; font-size: 12px; color: var(--text-muted); font-style: italic; }
+.tree-more { padding-top: 4px; padding-bottom: 4px; }
+.tree-more-btn { border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--accent); border-radius: 4px; font-size: 11px; padding: 2px 8px; cursor: pointer; }
+.tree-more-btn:hover { background: var(--accent-subtle); }
 </style>

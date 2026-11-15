@@ -3,12 +3,14 @@
   "private": true,
   "scripts": {
     "tauri": "tauri",
-    "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build",
-    "web:dev": "cd webapp && npm run dev",
-    "web:build": "cd webapp && npm run build"
+    "dev": "npm run prepare && tauri dev",
+    "build": "npm run prepare && tauri build",
+    "prepare": "node scripts/prepare-desktop.mjs",
+    "smoke": "node scripts/smoke-backend.mjs",
+    "web:dev": "npm --prefix webapp run dev",
+    "web:build": "npm --prefix webapp run build"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.11.4"
+    "@tauri-apps/cli": "2.11.4"
   }
 }

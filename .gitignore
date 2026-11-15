@@ -5,8 +5,8 @@
 **/classes/**
 **/out/**
 **/dist/
+webapp/dist/
 node_modules
 target
 *.log
 .env*
-app/src/main/resources/web/assets/

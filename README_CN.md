@@ -32,46 +32,44 @@
 
 ### 环境要求
 
-- Java 21+
-- Rust（构建 Tauri 桌面壳需要）
-- WebView2（仅 Windows，MSI 安装包会自动安装）
+- JDK 21（LTS）
+- Node.js 22
+- Rust stable（构建 Tauri 桌面壳）
 
-### 构建并运行
-
-```bash
-# 1. 构建前端
-cd webapp && npm install && npm run build
-
-# 2. 构建后端分发
-./gradlew :app:installDist
-
-# 3. 构建并启动桌面应用
-cd src-tauri
-cargo build --release
-./target/release/prettyzoo
-```
-
-### 开发模式（跳过 Tauri）
+### 构建与打包
 
 ```bash
-# 构建前端
-cd webapp && npm install && npm run build
-
-# 启动后端
-cd .. && app/build/install/app/bin/app
-# 浏览器打开 http://127.0.0.1:{port} 调试
+npm install
+npm run prepare          # 前端 + 后端 jar + 最小 JRE -> build/desktop
+npm run smoke            # 用打包后的 JRE 启动后端并检查 /api/health
+npx tauri build --bundles dmg   # macOS；Windows 用 --bundles nsis
 ```
 
-### 打包安装程序
+安装包完全自包含：内置 JDK 运行时、全部 Java jar、WebView2（Windows 离线安装）
+和 VC++ 运行库。最终用户不需要安装 Java、Node、Rust，也不需要联网。
+
+### 开发模式
 
 ```bash
-# macOS
-./scripts/build-installer.sh
+# 方式 A：完整桌面壳（splash + 内置后端）
+npm run prepare
+npm run dev
 
-# Windows（需要 NSIS 和 WiX Toolset）
-cd src-tauri && npx tauri build
-# 安装包在 src-tauri/target/release/bundle/msi/
+# 方式 B：浏览器 UI + 后端
+app/build/install/app/bin/app --port 8080
+npm run web:dev          # http://localhost:5173，/api 与 /ws 代理到 8080
 ```
+
+### 发布（一次产出全平台）
+
+```bash
+git tag v3.0.1
+git push origin v3.0.1
+```
+
+一个 GitHub Actions 矩阵并行构建 macOS arm64/x64、Windows x64、Linux x64，
+并把所有安装包汇总到同一个 draft release。macOS 无法可靠交叉产出 Windows
+原生安装包，因此 CI 是"一次生成全平台"的正式方式。
 
 ## 📦 技术栈
 
@@ -84,7 +82,7 @@ cd src-tauri && npx tauri build
 | 编辑器 | CodeMirror 6 |
 | 终端 | xterm.js |
 | ZK 客户端 | Apache Curator 5.x |
-| 构建 | Gradle + jlink |
+| 构建 | Gradle 8.10 + jlink 21 |
 
 ## 🔄 与 PrettyZoo 的关系
 

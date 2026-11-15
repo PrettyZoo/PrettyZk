@@ -1,28 +1,39 @@
 <template>
   <nav class="sidebar">
     <div class="sidebar-header">
-      <span class="logo">🦓</span>
+      <img class="brand-logo" :src="iconUrl" alt="PrettyZk" />
       <span class="brand">PrettyZk</span>
     </div>
 
     <div class="sidebar-toolbar">
-      <button class="toolbar-btn" @click="$emit('add')" title="New Server">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        <span>{{ t('sidebar.newConnection') }}</span>
-      </button>
+      <n-input
+        v-model:value="filter"
+        size="small"
+        clearable
+        :placeholder="t('sidebar.search')"
+        class="sidebar-search"
+      >
+        <template #prefix>
+          <Search :size="14" />
+        </template>
+      </n-input>
+      <n-button block dashed type="primary" size="small" @click="$emit('add')">
+        <template #icon><Plus :size="15" /></template>
+        {{ t('sidebar.newConnection') }}
+      </n-button>
     </div>
 
     <div class="server-list-label">{{ t('sidebar.servers') }}</div>
 
     <div class="server-list">
       <div
-        v-for="s in servers"
+        v-for="s in filteredServers"
         :key="s.id"
         class="server-card"
         :class="{ selected: s.id === selectedId }"
         @click="$emit('select', s.id)"
         @dblclick="$emit('edit', s.id)"
-        @contextmenu.prevent="showContextMenu($event, s)"
+        @contextmenu.prevent="openMenu($event, s)"
       >
         <div class="server-status" :class="statuses[s.id] || 'disconnected'"></div>
         <div class="server-info">
@@ -30,53 +41,94 @@
           <div class="server-host">{{ s.host }}:{{ s.port }}</div>
         </div>
         <div class="server-right">
-          <div class="server-connected-dot" v-if="(statuses[s.id] || 'disconnected') === 'connected'" title="Connected"></div>
-          <button class="server-edit-btn" @click.stop="$emit('edit', s.id)" title="Edit">✎</button>
-          <button class="server-del-btn" @click.stop="$emit('delete', s.id)" title="Delete">✕</button>
+          <n-button
+            quaternary
+            circle
+            size="tiny"
+            :title="t('server.editServer')"
+            @click.stop="$emit('edit', s.id)"
+          >
+            <template #icon><Pencil :size="13" /></template>
+          </n-button>
+          <n-button
+            quaternary
+            circle
+            size="tiny"
+            :title="t('server.delete')"
+            @click.stop="$emit('delete', s.id)"
+          >
+            <template #icon><Trash2 :size="13" /></template>
+          </n-button>
         </div>
       </div>
-      <div v-if="!servers || servers.length === 0" class="server-empty">
-        {{ t('sidebar.noServers') }}
+      <div v-if="filteredServers.length === 0" class="server-empty">
+        {{ filter ? t('sidebar.noMatch') : t('sidebar.noServers') }}
       </div>
     </div>
 
     <div class="sidebar-footer">
       <div class="footer-group">
         <button class="footer-btn" @click="$emit('config-export')" :title="t('sidebar.exportTooltip')">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 9 8 16"/><line x1="12" y1="9" x2="12" y2="21"/><line x1="4" y1="22" x2="20" y2="22"/></svg>
+          <Download :size="15" />
         </button>
         <button class="footer-btn" @click="onImportConfig" :title="t('sidebar.importTooltip')">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 8 12 15 16 8"/><line x1="12" y1="3" x2="12" y2="15"/><line x1="4" y1="22" x2="20" y2="22"/></svg>
+          <Upload :size="15" />
+        </button>
+        <button class="footer-btn" @click="$emit('logs')" :title="t('sidebar.logs')">
+          <FileText :size="15" />
         </button>
       </div>
       <div class="footer-group">
-        <button class="footer-btn" @click="$emit('logs')" :title="t('sidebar.logs')">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-        </button>
         <button class="footer-btn" @click="$emit('toggle-lang')" :title="locale === 'zh' ? 'English' : '中文'">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          <Languages :size="15" />
         </button>
-        <button class="footer-btn" @click="showFontSlider = !showFontSlider" title="Font Size">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+        <button class="footer-btn" @click="showFontSlider = !showFontSlider" :title="t('sidebar.fontTooltip')">
+          <Type :size="15" />
         </button>
       </div>
-      <button class="footer-btn theme-btn" @click="$emit('toggle-theme')" :title="isDark ? 'Light Mode' : 'Dark Mode'">
-        <svg v-if="isDark" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-        <svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+      <button class="footer-btn theme-btn" @click="$emit('toggle-theme')" :title="isDark ? t('sidebar.themeLight') : t('sidebar.themeDark')">
+        <Sun v-if="isDark" :size="15" />
+        <Moon v-else :size="15" />
       </button>
     </div>
+
     <div v-if="showFontSlider" class="font-slider-panel">
       <input type="range" min="10" max="24" :value="fontSize" @input="onFontChange" class="font-slider" />
       <span class="font-size-label">{{ fontSize }}px</span>
+    </div>
+
+    <div v-if="menu.show" class="ctx-backdrop" @click="menu.show = false" @contextmenu.prevent="menu.show = false"></div>
+    <div v-if="menu.show" class="ctx-menu" :style="{ left: menu.x + 'px', top: menu.y + 'px' }">
+      <button class="ctx-item" @click="runMenu('connect')">{{ t('server.connect') }}</button>
+      <button class="ctx-item" @click="runMenu('disconnect')">{{ t('server.disconnect') }}</button>
+      <div class="ctx-sep"></div>
+      <button class="ctx-item" @click="runMenu('edit')">{{ t('server.editServer') }}</button>
+      <button class="ctx-item danger" @click="runMenu('delete')">{{ t('server.delete') }}</button>
     </div>
   </nav>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed, reactive, ref } from 'vue'
+import { NButton, NInput } from 'naive-ui'
+import {
+  Download,
+  FileText,
+  Languages,
+  Moon,
+  Pencil,
+  Plus,
+  Search,
+  Sun,
+  Trash2,
+  Type,
+  Upload,
+} from 'lucide-vue-next'
 import { t, getLocale } from '../i18n.ts'
+import iconUrl from '../assets/icon.png'
 import { api } from '../api.ts'
-import { state } from '../main.ts'
+import { state } from '../state.ts'
+import { toast } from '../composables/feedback.ts'
 
 const props = defineProps({
   servers: { type: Array, default: () => [] },
@@ -85,9 +137,56 @@ const props = defineProps({
   locale: { type: String, default: 'en' },
   fontSize: { type: Number, default: 14 },
 })
-const emit = defineEmits(['select', 'add', 'edit', 'delete', 'logs', 'toggle-theme', 'toggle-lang', 'update:fontSize', 'config-export'])
+const emit = defineEmits([
+  'select',
+  'add',
+  'edit',
+  'delete',
+  'connect',
+  'disconnect',
+  'logs',
+  'toggle-theme',
+  'toggle-lang',
+  'update:fontSize',
+  'config-export',
+])
 
 const showFontSlider = ref(false)
+const filter = ref('')
+const menu = reactive<{ show: boolean; x: number; y: number; server: any }>({
+  show: false,
+  x: 0,
+  y: 0,
+  server: null,
+})
+
+const filteredServers = computed(() => {
+  const q = filter.value.trim().toLowerCase()
+  if (!q) return props.servers
+  return props.servers.filter((s: any) => {
+    const text = `${s.alias || ''} ${s.host} ${s.port}`.toLowerCase()
+    return text.includes(q)
+  })
+})
+
+const isDark = computed(() => state.config.theme === 'dark')
+
+function openMenu(event: MouseEvent, server: any) {
+  menu.show = true
+  menu.x = event.clientX
+  menu.y = event.clientY
+  menu.server = server
+}
+
+function runMenu(action: string) {
+  const server = menu.server
+  menu.show = false
+  if (!server) return
+  if (action === 'connect') emit('connect', server.id)
+  if (action === 'disconnect') emit('disconnect', server.id)
+  if (action === 'edit') emit('edit', server.id)
+  if (action === 'delete') emit('delete', server.id)
+}
 
 async function onImportConfig() {
   const input = document.createElement('input')
@@ -99,104 +198,242 @@ async function onImportConfig() {
     try {
       const text = await file.text()
       await api.importConfig(text)
-      window.__toast?.(t('sidebar.importSuccess'), 'success')
-    } catch (e) {
-      window.__toast?.(t('sidebar.importFailed', { msg: e.message }), 'error')
+      toast(t('sidebar.importSuccess'), 'success')
+    } catch (e: any) {
+      toast(t('sidebar.importFailed', { msg: e.message }), 'error')
     }
   }
   input.click()
 }
 
-function onFontChange(e) {
-  const val = parseInt(e.target.value)
+function onFontChange(e: Event) {
+  const val = parseInt((e.target as HTMLInputElement).value, 10)
   emit('update:fontSize', val)
   api.updateFontSize(val).catch(() => {})
 }
-const isDark = computed(() => state.config.theme === 'dark')
-function showContextMenu(e, s) {}
 </script>
 
 <style scoped>
 .sidebar {
-  width: var(--sidebar-width, 270px); min-width: var(--sidebar-width, 270px);
-  background: var(--sidebar-bg); display: flex; flex-direction: column;
+  width: var(--sidebar-width, 280px);
+  min-width: var(--sidebar-width, 280px);
+  background: var(--sidebar-bg);
+  display: flex;
+  flex-direction: column;
   border-right: 1px solid var(--border-color);
-  overflow: hidden; user-select: none;
+  overflow: hidden;
+  user-select: none;
 }
 .sidebar-header {
-  display: flex; align-items: center; gap: 10px;
-  padding: 18px 16px 14px; border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 14px 12px;
 }
-.logo {
-  width: 32px; height: 32px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 22px; flex-shrink: 0;
+.brand-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  flex-shrink: 0;
 }
-.brand { font-size: 15px; font-weight: 700; color: var(--text-primary); letter-spacing: 0.3px; }
-.sidebar-toolbar { padding: 12px 12px 8px; }
-.toolbar-btn {
-  width: 100%; padding: 9px 12px; border: 1px dashed var(--border-color);
-  border-radius: 8px; background: transparent; color: var(--sidebar-text);
-  cursor: pointer; display: flex; align-items: center; gap: 8px;
-  font-size: 13px; font-weight: 500; transition: all 0.15s;
+.brand {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.2px;
 }
-.toolbar-btn:hover { background: var(--sidebar-hover); border-color: var(--accent); color: var(--text-primary); }
-.sidebar-toolbar + .server-list-label { padding-top: 4px; }
+.sidebar-toolbar {
+  padding: 0 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sidebar-search :deep(.n-input__border),
+.sidebar-search :deep(.n-input__state-border) {
+  border-radius: 6px;
+}
 .server-list-label {
-  padding: 12px 16px 6px; font-size: 10px; font-weight: 700;
-  color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.2px;
+  padding: 8px 16px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1.1px;
 }
-.server-list { flex: 1; overflow-y: auto; padding: 2px 8px 8px; }
+.server-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2px 8px 8px;
+}
 .server-card {
-  display: flex; align-items: center; gap: 8px;
-  padding: 9px 10px; border-radius: 8px;
-  cursor: pointer; transition: all 0.12s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  cursor: pointer;
   margin-bottom: 1px;
+  border-left: 3px solid transparent;
+  transition: background 0.12s, border-color 0.12s;
 }
-.server-card:hover { background: var(--sidebar-hover); }
-.server-card.selected { background: var(--sidebar-hover); }
-.server-card.selected .server-name { color: #fff; }
-.server-card .server-name { transition: color 0.12s; }
+.server-card:hover {
+  background: var(--sidebar-hover);
+}
+.server-card.selected {
+  background: var(--accent-subtle);
+  border-left-color: var(--accent);
+}
+.server-card.selected .server-name {
+  color: var(--text-primary);
+}
 .server-status {
-  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
-  background: var(--text-muted); transition: all 0.3s;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-muted);
+  transition: background 0.3s;
 }
-.server-status.connected { background: var(--success-light); box-shadow: 0 0 6px rgba(76,175,128,0.4); }
-.server-status.disconnected { background: var(--border-color); }
-.server-status.connecting { background: var(--warning-light); animation: pulse 1s infinite; }
-.server-info { flex: 1; min-width: 0; }
-.server-name { font-size: 13px; font-weight: 500; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.server-host { font-size: 11px; color: var(--text-muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.server-right { display: flex; align-items: center; gap: 2px; flex-shrink: 0; opacity: 1; }
-.server-edit-btn { opacity: 0.4; }
-.server-card:hover .server-edit-btn { opacity: 0.7; }
-.server-edit-btn:hover { opacity: 1 !important; }
-.server-del-btn { opacity: 0.3; }
-.server-card:hover .server-del-btn { opacity: 0.6; }
-.server-del-btn:hover { opacity: 1 !important; }
-.server-connected-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success-light); box-shadow: 0 0 8px rgba(76, 175, 128, 0.6); flex-shrink: 0; margin-right: 4px; }
-.server-edit-btn { width: 26px; height: 26px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; border-radius: 5px; font-size: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0; transition: all 0.12s; }
-.server-edit-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
-.server-del-btn { width: 26px; height: 26px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; border-radius: 5px; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0; transition: all 0.12s; }
-.server-del-btn:hover { color: var(--danger); background: var(--danger-light); }
-.server-empty { padding: 24px 16px; font-size: 12px; color: var(--text-muted); text-align: center; line-height: 1.6; }
+.server-status.connected {
+  background: var(--success);
+}
+.server-status.disconnected {
+  background: var(--border-color);
+}
+.server-status.connecting {
+  background: var(--warning);
+  animation: pulse 1s infinite;
+}
+.server-info {
+  flex: 1;
+  min-width: 0;
+}
+.server-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.server-host {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.server-right {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.server-card:hover .server-right,
+.server-card.selected .server-right {
+  opacity: 1;
+}
+.server-empty {
+  padding: 24px 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.6;
+}
 .sidebar-footer {
-  display: flex; align-items: center;
-  border-top: 1px solid var(--border-color); padding: 6px 6px; gap: 2px;
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--border-color);
+  padding: 4px 6px;
+  gap: 2px;
 }
 .footer-group {
-  display: flex; gap: 2px;
+  display: flex;
+  gap: 1px;
 }
 .footer-btn {
-  width: 32px; height: 32px; border: none; border-radius: 6px;
-  background: transparent; color: var(--sidebar-text); cursor: pointer;
-  font-size: 12px; display: flex; align-items: center; justify-content: center;
-  transition: all 0.15s;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--sidebar-text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
 }
-.footer-btn:hover { background: var(--sidebar-hover); color: var(--text-primary); }
-.footer-btn.theme-btn { margin-left: auto; }
-.font-slider-panel { display:flex; align-items:center; gap:6px; padding:6px 12px; border-top:1px solid var(--border-color); background:var(--sidebar-bg); }
-.font-slider { flex:1; height:4px; cursor:pointer; accent-color:var(--accent); }
-.font-size-label { font-size:11px; color:var(--text-muted); min-width:30px; text-align:right; }
-@keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.4 } }
+.footer-btn:hover {
+  background: var(--sidebar-hover);
+  color: var(--text-primary);
+}
+.footer-btn.theme-btn {
+  margin-left: auto;
+}
+.font-slider-panel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--border-color);
+  background: var(--sidebar-bg);
+}
+.font-slider {
+  flex: 1;
+  height: 4px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+.font-size-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  min-width: 30px;
+  text-align: right;
+}
+.ctx-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9997;
+}
+.ctx-menu {
+  position: fixed;
+  z-index: 9998;
+  min-width: 150px;
+  padding: 4px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+.ctx-item {
+  display: block;
+  width: 100%;
+  padding: 7px 12px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.ctx-item:hover {
+  background: var(--bg-hover);
+}
+.ctx-item.danger {
+  color: var(--danger);
+}
+.ctx-sep {
+  height: 1px;
+  margin: 4px 8px;
+  background: var(--border-color);
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
 </style>
