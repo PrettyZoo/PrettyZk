@@ -55,9 +55,10 @@
             </div>
           </div>
 
-          <div class="tree-scroll">
+          <div class="tree-scroll" tabindex="0" role="tree" aria-label="ZooKeeper nodes" @keydown="onTreeKeydown">
             <n-virtual-list
               v-if="visibleRows.length > 0"
+              ref="treeListRef"
               :items="visibleRows"
               :item-size="26"
               key-field="path"
@@ -84,6 +85,9 @@
                 <div
                   v-else
                   class="tree-row"
+                  role="treeitem"
+                  :aria-selected="item.path === selectedNodePath"
+                  :aria-expanded="expanded.has(item.path)"
                   :class="{ selected: item.path === selectedNodePath }"
                   :style="{ paddingLeft: 8 + item.depth * 18 + 'px' }"
                   @click="selectRow(item)"
@@ -223,6 +227,7 @@ const connecting = ref(true)
 const showAddForm = ref(false)
 const saving = ref(false)
 const treeWidth = ref(Number(localStorage.getItem('prettyzk.treeWidth')) || 300)
+const treeListRef = ref<any>(null)
 
 const expanded = reactive(new Set<string>())
 const loadingPaths = reactive(new Set<string>())
@@ -443,6 +448,48 @@ async function selectRow(row: TreeRow) {
     return
   }
   await onSelectNode({ path: row.path })
+}
+
+async function selectKeyboardRow(row: TreeRow) {
+  const index = visibleRows.value.findIndex((item) => item.path === row.path)
+  if (index >= 0) {
+    treeListRef.value?.scrollToIndex?.(index)
+  }
+  await onSelectNode({ path: row.path })
+}
+
+async function onTreeKeydown(event: KeyboardEvent) {
+  const rows = visibleRows.value.filter((row) => row.type !== 'more')
+  if (rows.length === 0) return
+  let index = rows.findIndex((row) => row.path === selectedNodePath.value)
+  const current = index >= 0 ? rows[index] : null
+
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    index = Math.min(rows.length - 1, index + 1)
+    await selectKeyboardRow(rows[index])
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    index = Math.max(0, index < 0 ? 0 : index - 1)
+    await selectKeyboardRow(rows[index])
+  } else if (event.key === 'ArrowRight') {
+    event.preventDefault()
+    if (current && !expanded.has(current.path) && hasChildren(current)) {
+      await toggleNode(current)
+    }
+  } else if (event.key === 'ArrowLeft') {
+    event.preventDefault()
+    if (current && expanded.has(current.path)) {
+      expanded.delete(current.path)
+    } else if (current) {
+      const parent = parentPath(current.path)
+      const parentRow = rows.find((row) => row.path === parent)
+      if (parentRow) await selectKeyboardRow(parentRow)
+    }
+  } else if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault()
+    if (current) await onSelectNode({ path: current.path })
+  }
 }
 
 function startResize(event: MouseEvent) {
@@ -932,6 +979,13 @@ onUnmounted(() => {
 }
 .tree-virtual {
   height: 100%;
+}
+.tree-scroll:focus {
+  outline: none;
+}
+.tree-scroll:focus-visible {
+  outline: 1px solid var(--accent-light);
+  outline-offset: -1px;
 }
 .tree-row {
   height: 26px;
