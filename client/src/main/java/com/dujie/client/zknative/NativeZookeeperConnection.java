@@ -3,6 +3,7 @@ package com.dujie.client.zknative;
 import com.dujie.model.connection.ZookeeperConnection;
 import com.dujie.model.listener.ZookeeperNodeListener;
 import com.dujie.model.node.NodeMode;
+import com.dujie.model.node.ZkNode;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.ZooDefs;
@@ -135,8 +136,25 @@ public class NativeZookeeperConnection implements ZookeeperConnection<ZooKeeper>
     }
 
     @Override
+    public List<String> getChildren(String path) throws Exception {
+        return zk.getChildren(path, false);
+    }
+
+    @Override
+    public ZkNode getNode(String path) throws Exception {
+        ZkNode node = new ZkNode();
+        node.setPath(path);
+        Stat stat = new Stat();
+        byte[] data = zk.getData(path, false, stat);
+        node.setData(data == null ? "" : new String(data, StandardCharsets.UTF_8));
+        node.setDataBytes(data == null ? new byte[0] : data);
+        node.setStat(stat);
+        return node;
+    }
+
+    @Override
     public void sync(List<ZookeeperNodeListener> listeners) {
-        // No TreeCache in native mode
+        // Native mode has no persistent cache; the tree is loaded on demand.
     }
 
     @Override

@@ -3,21 +3,22 @@ package com.dujie.client.curator;
 import com.dujie.model.connection.ZookeeperConnection;
 import com.dujie.model.listener.ZookeeperNodeListener;
 import com.dujie.model.node.NodeMode;
+import com.dujie.model.node.ZkNode;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.api.CreateBuilder;
 import org.apache.curator.framework.api.DeleteBuilder;
 import org.apache.curator.framework.recipes.cache.ChildData;
-import org.apache.curator.framework.recipes.cache.TreeCache;
+import org.apache.curator.framework.recipes.cache.CuratorCache;
+import org.apache.curator.framework.recipes.cache.CuratorCacheStorage;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.nio.charset.StandardCharsets;
 import java.util.regex.Pattern;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -31,7 +32,7 @@ public class CuratorZookeeperConnection implements ZookeeperConnection<CuratorFr
 
     private final CuratorFramework cacheClient;
 
-    private final TreeCache treeCache;
+    private final CuratorCache cache;
 
     private final CountDownLatch treeReady = new CountDownLatch(1);
 
@@ -46,8 +47,8 @@ public class CuratorZookeeperConnection implements ZookeeperConnection<CuratorFr
         this.id = id;
         this.curatorFramework = curatorFramework;
         this.cacheClient = cacheClient;
-        this.treeCache = cacheClient == null ? null : TreeCache.newBuilder(cacheClient, "/")
-                .setCacheData(false)
+        this.cache = cacheClient == null ? null : CuratorCache.builder(cacheClient, "/")
+                .withStorage(CuratorCacheStorage.dataNotCached())
                 .build();
     }
 
@@ -93,8 +94,8 @@ public class CuratorZookeeperConnection implements ZookeeperConnection<CuratorFr
 
     @Override
     public void close() {
-        if (treeCache != null) {
-            treeCache.close();
+        if (cache != null) {
+            cache.close();
         }
         if (cacheClient != null) {
             cacheClient.close();
@@ -110,19 +111,19 @@ public class CuratorZookeeperConnection implements ZookeeperConnection<CuratorFr
 
     @Override
     public void sync(List<ZookeeperNodeListener> listeners) {
-        if (treeCache == null) {
+        if (cache == null) {
             return;
         }
-        final String server = curatorFramework.getZookeeperClient().getCurrentConnectionString();
+        final String server = cacheClient.getZookeeperClient().getCurrentConnectionString();
         if (!isSync.get()) {
             log.debug("begin to sync tree node from {}", server);
-            treeCache.getListenable().addListener(new CuratorTreeCacheListener(id, listeners, treeReady));
+            cache.listenable().addListener(new CuratorCacheHandler(id, server, listeners, treeReady));
             try {
-                treeCache.start();
+                cache.start();
                 isSync.set(true);
             } catch (Exception e) {
                 log.error("sync zookeeper node error", e);
-                treeCache.close();
+                cache.close();
             }
         } else {
             log.info("ignore sync operation, because of {} [{}] has been sync", server, getId());
@@ -130,22 +131,41 @@ public class CuratorZookeeperConnection implements ZookeeperConnection<CuratorFr
     }
 
     @Override
+    public List<String> getChildren(String path) throws Exception {
+        return curatorFramework.getChildren().forPath(path);
+    }
+
+    @Override
+    public ZkNode getNode(String path) throws Exception {
+        ZkNode node = new ZkNode();
+        node.setPath(path);
+        Stat stat = new Stat();
+        byte[] data = curatorFramework.getData().storingStatIn(stat).forPath(path);
+        node.setData(data == null ? "" : new String(data, StandardCharsets.UTF_8));
+        node.setDataBytes(data == null ? new byte[0] : data);
+        node.setStat(stat);
+        return node;
+    }
+
+    @Override
     public int getChildCount(String path) {
-        if (treeCache == null) {
+        if (cache == null) {
             return -1;
         }
-        Map<String, ChildData> children = treeCache.getCurrentChildren(path);
-        return children == null ? -1 : children.size();
+        return cache.get(path)
+                .map(ChildData::getStat)
+                .map(Stat::getNumChildren)
+                .orElse(-1);
     }
 
     @Override
     public boolean hasCache() {
-        return treeCache != null;
+        return cache != null;
     }
 
     @Override
     public List<String> searchPaths(Pattern pattern, int limit) {
-        if (treeCache == null) {
+        if (cache == null) {
             return null;
         }
         try {
@@ -156,32 +176,11 @@ public class CuratorZookeeperConnection implements ZookeeperConnection<CuratorFr
             Thread.currentThread().interrupt();
             return null;
         }
-        if (treeCache.getCurrentChildren("/") == null) {
-            return null;
-        }
-        List<String> results = new ArrayList<>();
-        collectPaths("/", pattern, limit, results);
-        return results;
-    }
-
-    private void collectPaths(String path, Pattern pattern, int limit, List<String> results) {
-        if (results.size() >= limit) {
-            return;
-        }
-        Map<String, ChildData> children = treeCache.getCurrentChildren(path);
-        if (children == null) {
-            return;
-        }
-        for (String name : children.keySet()) {
-            String childPath = "/".equals(path) ? "/" + name : path + "/" + name;
-            if (pattern.matcher(childPath).find()) {
-                results.add(childPath);
-                if (results.size() >= limit) {
-                    return;
-                }
-            }
-            collectPaths(childPath, pattern, limit, results);
-        }
+        return cache.stream()
+                .map(ChildData::getPath)
+                .filter(path -> pattern.matcher(path).find())
+                .limit(limit)
+                .toList();
     }
 
     @Override

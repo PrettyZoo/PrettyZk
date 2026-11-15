@@ -5,13 +5,9 @@ import com.dujie.model.listener.ServerListener;
 import com.dujie.model.listener.ZookeeperNodeListener;
 import com.dujie.model.node.NodeMode;
 import com.dujie.model.node.ZkNode;
-import lombok.Getter;
-import org.apache.curator.framework.CuratorFramework;
-import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
+import lombok.Getter;
 
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -92,9 +88,8 @@ public class Zookeeper {
     }
 
     public List<String> getChildren(String path) throws Exception {
-        CuratorFramework client = (CuratorFramework) connection.getClient();
         try {
-            return client.getChildren().forPath(path);
+            return connection.getChildren(path);
         } catch (Exception e) {
             // If we can't get children, return empty list (handles ACL/permission issues)
             return List.of();
@@ -104,29 +99,23 @@ public class Zookeeper {
     /**
      * Get node data and stat for a given path.
      */
-    public ZkNode getNode(String path) throws Exception {
-        CuratorFramework client = (CuratorFramework) connection.getClient();
-        ZkNode node = new ZkNode();
-        node.setPath(path);
+    public ZkNode getNode(String path) {
         try {
-            Stat stat = new Stat();
-            byte[] dataBytes = client.getData().storingStatIn(stat).forPath(path);
-            node.setData(dataBytes != null ? new String(dataBytes, StandardCharsets.UTF_8) : "");
-            node.setDataBytes(dataBytes);
-            node.setStat(stat);
+            return connection.getNode(path);
         } catch (Exception e) {
             // If we can't read data, return node without data/stat (handles ACL/permission issues)
+            ZkNode node = new ZkNode();
+            node.setPath(path);
             node.setData("");
             node.setDataBytes(new byte[0]);
+            return node;
         }
-        return node;
     }
 
     /**
      * Search nodes by keyword recursively from the root.
      */
     public SearchResult search(String keyword) throws Exception {
-        CuratorFramework client = (CuratorFramework) connection.getClient();
         List<ZkNode> results = new java.util.ArrayList<>();
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
         boolean[] truncated = {false};
@@ -137,7 +126,7 @@ public class Zookeeper {
                 // The initial tree snapshot is still being built. Do a fast
                 // two-level scan so the user gets useful partial results
                 // instead of waiting ~35s for a 50k-node cache.
-                return searchShallow(client, pattern, 100);
+                return searchShallow(pattern, 100);
             }
             for (String path : cachedPaths) {
                 try {
@@ -148,70 +137,52 @@ public class Zookeeper {
             }
             return new SearchResult(results, cachedPaths.size() >= 100);
         }
-        searchRecursive(client, "/", pattern, results, deadline, truncated);
+        SearchResult shallow = searchShallow(pattern, 100);
+        if (!shallow.getNodes().isEmpty()) {
+            return shallow;
+        }
+        searchRecursive("/", pattern, results, deadline, truncated);
         return new SearchResult(results, truncated[0]);
     }
 
-    private SearchResult searchShallow(CuratorFramework client, Pattern pattern, int limit)
-            throws Exception {
+    private SearchResult searchShallow(Pattern pattern, int limit) throws Exception {
         List<ZkNode> nodes = new java.util.ArrayList<>();
-        String connectString = client.getZookeeperClient().getCurrentConnectionString();
-        java.util.concurrent.CountDownLatch connected = new java.util.concurrent.CountDownLatch(1);
-        ZooKeeper searchClient = new ZooKeeper(connectString, 15_000, event -> {
-            if (event.getState() == Watcher.Event.KeeperState.SyncConnected) {
-                connected.countDown();
+        List<String> rootChildren = getChildren("/");
+        List<String> directories = new java.util.ArrayList<>();
+        for (String name : rootChildren) {
+            String path = "/" + name;
+            if (pattern.matcher(path).find()) {
+                addNode(nodes, path, limit);
             }
-        });
-        try {
-            if (!connected.await(3, TimeUnit.SECONDS)) {
-                return new SearchResult(nodes, true);
+            directories.add(path);
+        }
+        for (String directory : directories) {
+            if (nodes.size() >= limit) {
+                break;
             }
-            List<String> rootChildren = searchClient.getChildren("/", false);
-            List<String> directories = new java.util.ArrayList<>();
-            for (String name : rootChildren) {
-                String path = "/" + name;
-                if (pattern.matcher(path).find()) {
-                    addNode(searchClient, nodes, path, limit);
-                }
-                directories.add(path);
-            }
-            for (String directory : directories) {
-                if (nodes.size() >= limit) {
-                    break;
-                }
-                try {
-                    for (String name : searchClient.getChildren(directory, false)) {
-                        String path = directory + "/" + name;
-                        if (pattern.matcher(path).find()) {
-                            addNode(searchClient, nodes, path, limit);
-                        }
-                        if (nodes.size() >= limit) {
-                            break;
-                        }
+            try {
+                for (String name : getChildren(directory)) {
+                    String path = directory + "/" + name;
+                    if (pattern.matcher(path).find()) {
+                        addNode(nodes, path, limit);
                     }
-                } catch (Exception ignored) {
-                    // skip subtrees that fail to list
+                    if (nodes.size() >= limit) {
+                        break;
+                    }
                 }
+            } catch (Exception ignored) {
+                // skip subtrees that fail to list
             }
-        } finally {
-            searchClient.close();
         }
         return new SearchResult(nodes, true);
     }
 
-    private void addNode(ZooKeeper zk, List<ZkNode> nodes, String path, int limit) {
+    private void addNode(List<ZkNode> nodes, String path, int limit) {
         if (nodes.size() >= limit) {
             return;
         }
         try {
-            Stat stat = new Stat();
-            byte[] data = zk.getData(path, false, stat);
-            ZkNode node = new ZkNode();
-            node.setPath(path);
-            node.setData(data == null ? "" : new String(data, StandardCharsets.UTF_8));
-            node.setDataBytes(data == null ? new byte[0] : data);
-            node.setStat(stat);
-            nodes.add(node);
+            nodes.add(getNode(path));
         } catch (Exception ignored) {
             // skip nodes that fail to read
         }
@@ -235,7 +206,7 @@ public class Zookeeper {
         return Pattern.compile(regex.toString(), Pattern.CASE_INSENSITIVE);
     }
 
-    private void searchRecursive(CuratorFramework client, String path, Pattern pattern,
+    private void searchRecursive(String path, Pattern pattern,
                                   List<ZkNode> results, long deadline,
                                   boolean[] truncated) throws Exception {
         if (results.size() >= 100 || System.nanoTime() > deadline) {
@@ -250,10 +221,10 @@ public class Zookeeper {
             }
         }
         try {
-            List<String> children = client.getChildren().forPath(path);
+            List<String> children = getChildren(path);
             for (String child : children) {
                 String childPath = "/".equals(path) ? "/" + child : path + "/" + child;
-                searchRecursive(client, childPath, pattern, results, deadline, truncated);
+                searchRecursive(childPath, pattern, results, deadline, truncated);
             }
         } catch (Exception ignored) {
             // skip nodes that fail to list (e.g. ACL denied, no permission on sub-tree)

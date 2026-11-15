@@ -2,6 +2,7 @@ package com.dujie.model.connection;
 
 import com.dujie.model.listener.ZookeeperNodeListener;
 import com.dujie.model.node.NodeMode;
+import com.dujie.model.node.ZkNode;
 import org.apache.zookeeper.data.Stat;
 
 import java.util.List;
@@ -20,6 +21,10 @@ public interface ZookeeperConnection<T> {
     void close();
 
     T getClient();
+
+    List<String> getChildren(String path) throws Exception;
+
+    ZkNode getNode(String path) throws Exception;
 
     void sync(List<ZookeeperNodeListener> listeners);
 
