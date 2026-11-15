@@ -50,7 +50,7 @@ onMounted(() => {
         logs.value.splice(0, logs.value.length - MAX_LINES)
       }
       nextTick(() => {
-        listRef.value?.scrollTo({ position: 'bottom' })
+        listRef.value?.scrollTo?.({ position: 'bottom' })
       })
     })
     eventSource.onopen = () => {
