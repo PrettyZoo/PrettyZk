@@ -22,24 +22,29 @@
           </template>
         </div>
         <div class="toolbar-actions">
-          <button class="btn btn-small" @click="sync" :disabled="loading">
-            <RefreshCw :size="13" /> {{ t('node.sync') }}
-          </button>
-          <button class="btn btn-small btn-primary" @click="showAddDialog">
-            <Plus :size="13" /> {{ t('node.add') }}
-          </button>
+          <n-button size="small" :loading="loading" @click="sync">
+            <template #icon><RefreshCw :size="13" /></template>
+            {{ t('node.sync') }}
+          </n-button>
+          <n-button size="small" type="primary" @click="showAddDialog">
+            <template #icon><Plus :size="13" /></template>
+            {{ t('node.add') }}
+          </n-button>
         </div>
       </div>
 
       <div class="browse-split">
         <div class="tree-panel" :style="{ width: treeWidth + 'px' }">
           <div class="search-box">
-            <input
-              v-model="searchQuery"
-              type="text"
+            <n-input
+              v-model:value="searchQuery"
+              size="small"
+              clearable
               :placeholder="t('node.search')"
               @input="onSearch"
-            />
+            >
+              <template #prefix><Search :size="13" /></template>
+            </n-input>
             <div v-if="searchResults.length > 0" class="search-dropdown">
               <div
                 v-for="r in searchResults"
@@ -161,17 +166,16 @@
     <div v-show="activeTab === '4lc'" class="tab-panel">
       <div class="toolbar"><div class="breadcrumb">{{ t('node.fourLetterCmd') }}</div></div>
       <div style="padding: 20px">
-        <div class="form-group" style="max-width: 200px">
-          <label>{{ t('node.cmd') }}</label>
-          <input
-            v-model="fourLetterCmd"
-            type="text"
+        <div style="max-width: 200px; margin-bottom: 12px">
+          <div class="field-label">{{ t('node.cmd') }}</div>
+          <n-input
+            v-model:value="fourLetterCmd"
             maxlength="4"
             placeholder="stat"
             style="text-transform: lowercase"
           />
         </div>
-        <button class="btn btn-primary" @click="runFourLetterCmd">{{ t('node.execute') }}</button>
+        <n-button type="primary" @click="runFourLetterCmd">{{ t('node.execute') }}</n-button>
         <pre class="cmd-output">{{ fourLetterOutput }}</pre>
       </div>
     </div>
@@ -180,7 +184,7 @@
 
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { NVirtualList } from 'naive-ui'
+import { NButton, NInput, NVirtualList } from 'naive-ui'
 import {
   ChevronRight,
   Folder,
@@ -188,6 +192,7 @@ import {
   FolderTree,
   Loader2,
   Plus,
+  Search,
   RefreshCw,
   TerminalSquare,
   Wrench,
@@ -930,18 +935,11 @@ onUnmounted(() => {
   position: relative;
   flex-shrink: 0;
 }
-.search-box input {
-  width: 100%;
-  padding: 7px 10px;
-  border: 1px solid var(--input-border);
-  border-radius: 6px;
-  background: var(--input-bg);
-  color: var(--text-primary);
+.field-label {
+  margin-bottom: 5px;
   font-size: 12px;
-  outline: none;
-}
-.search-box input:focus {
-  border-color: var(--input-focus);
+  font-weight: 600;
+  color: var(--text-secondary);
 }
 .search-dropdown {
   position: absolute;

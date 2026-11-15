@@ -3,8 +3,14 @@
     <div class="detail-header">
       <div class="detail-path">{{ node.path }}</div>
       <div class="detail-actions">
-        <button class="btn btn-small btn-primary" @click="$emit('save', nodeData)" :disabled="saving"><Save :size="13" /> {{ t('node.save') }}</button>
-        <button class="btn btn-small btn-danger" @click="$emit('delete', node)"><Trash2 :size="13" /> {{ t('node.deleteNode') }}</button>
+        <n-button size="small" type="primary" :loading="saving" @click="$emit('save', nodeData)">
+          <template #icon><Save :size="13" /></template>
+          {{ t('node.save') }}
+        </n-button>
+        <n-button size="small" type="error" @click="$emit('delete', node)">
+          <template #icon><Trash2 :size="13" /></template>
+          {{ t('node.deleteNode') }}
+        </n-button>
       </div>
     </div>
     <div class="detail-meta">
@@ -36,6 +42,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { NButton } from 'naive-ui'
 import { t } from '../i18n.ts'
 import { Save, Trash2 } from 'lucide-vue-next'
 import { state } from '../state.ts'

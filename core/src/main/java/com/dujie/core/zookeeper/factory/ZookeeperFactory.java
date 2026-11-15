@@ -12,7 +12,7 @@ import com.dujie.model.connection.ZookeeperParams;
 import com.dujie.model.listener.ServerListener;
 import com.dujie.model.listener.ZookeeperNodeListener;
 import com.dujie.model.util.StringWriter;
-import com.dujie.client.zookeeper.ZooKeeperMain;
+import com.dujie.client.terminal.ZkCommandDispatcher;
 
 import java.util.List;
 
@@ -88,7 +88,7 @@ public class ZookeeperFactory {
         var connection = factory.create(params);
         var zk = connection.getClient().getZookeeperClient().getZooKeeper();
         writer.write("connect success \n");
-        var zkMain = new ZooKeeperMain(zk, writer);
-        return new Terminal(id, url, connection, zkMain);
+        var dispatcher = new ZkCommandDispatcher(zk, writer);
+        return new Terminal(id, url, connection, dispatcher);
     }
 }

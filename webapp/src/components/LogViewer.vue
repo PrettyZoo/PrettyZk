@@ -3,8 +3,8 @@
     <div class="toolbar">
       <div class="breadcrumb">{{ t('log.title') }}</div>
       <div class="toolbar-actions">
-        <button class="btn btn-small" @click="clearLogs">{{ t('log.clear') }}</button>
-        <button class="btn btn-small" @click="emit('back')">{{ t('node.back') }}</button>
+        <n-button size="small" @click="clearLogs">{{ t('log.clear') }}</n-button>
+        <n-button size="small" @click="emit('back')">{{ t('node.back') }}</n-button>
       </div>
     </div>
     <div class="log-scroll">
@@ -30,7 +30,7 @@
 
 <script setup lang="ts">
 import { nextTick, onMounted, onUnmounted, ref } from 'vue'
-import { NVirtualList } from 'naive-ui'
+import { NButton, NVirtualList } from 'naive-ui'
 import { t } from '../i18n.ts'
 
 const emit = defineEmits(['back'])
