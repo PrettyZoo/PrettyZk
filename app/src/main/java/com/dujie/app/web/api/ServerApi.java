@@ -150,6 +150,7 @@ public class ServerApi {
 
                     @Override
                     public void syncCompleted(String server) {
+                        wsManager.broadcastReady(id);
                     }
 
                     @Override

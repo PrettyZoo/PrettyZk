@@ -13,8 +13,12 @@ import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CuratorZookeeperConnection implements ZookeeperConnection<CuratorFramework> {
@@ -26,6 +30,8 @@ public class CuratorZookeeperConnection implements ZookeeperConnection<CuratorFr
     private final CuratorFramework curatorFramework;
 
     private final TreeCache treeCache;
+
+    private final CountDownLatch treeReady = new CountDownLatch(1);
 
     private AtomicBoolean isSync = new AtomicBoolean(false);
 
@@ -94,7 +100,7 @@ public class CuratorZookeeperConnection implements ZookeeperConnection<CuratorFr
         final String server = curatorFramework.getZookeeperClient().getCurrentConnectionString();
         if (!isSync.get()) {
             log.debug("begin to sync tree node from {}", server);
-            treeCache.getListenable().addListener(new CuratorTreeCacheListener(id, listeners));
+            treeCache.getListenable().addListener(new CuratorTreeCacheListener(id, listeners, treeReady));
             try {
                 treeCache.start();
                 isSync.set(true);
@@ -111,6 +117,49 @@ public class CuratorZookeeperConnection implements ZookeeperConnection<CuratorFr
     public int getChildCount(String path) {
         Map<String, ChildData> children = treeCache.getCurrentChildren(path);
         return children == null ? -1 : children.size();
+    }
+
+    @Override
+    public boolean hasCache() {
+        return true;
+    }
+
+    @Override
+    public List<String> searchPaths(Pattern pattern, int limit) {
+        try {
+            if (!treeReady.await(500, TimeUnit.MILLISECONDS)) {
+                return null;
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return null;
+        }
+        if (treeCache.getCurrentChildren("/") == null) {
+            return null;
+        }
+        List<String> results = new ArrayList<>();
+        collectPaths("/", pattern, limit, results);
+        return results;
+    }
+
+    private void collectPaths(String path, Pattern pattern, int limit, List<String> results) {
+        if (results.size() >= limit) {
+            return;
+        }
+        Map<String, ChildData> children = treeCache.getCurrentChildren(path);
+        if (children == null) {
+            return;
+        }
+        for (String name : children.keySet()) {
+            String childPath = "/".equals(path) ? "/" + name : path + "/" + name;
+            if (pattern.matcher(childPath).find()) {
+                results.add(childPath);
+                if (results.size() >= limit) {
+                    return;
+                }
+            }
+            collectPaths(childPath, pattern, limit, results);
+        }
     }
 
     @Override

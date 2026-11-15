@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 public class CuratorTreeCacheListener implements TreeCacheListener {
 
@@ -21,13 +22,17 @@ public class CuratorTreeCacheListener implements TreeCacheListener {
 
     private List<ZookeeperNodeListener> listeners;
 
+    private final CountDownLatch readyLatch;
+
     /** Initial TreeCache replay is not broadcast; the UI loads nodes on demand. */
     private volatile boolean initialized;
 
     public CuratorTreeCacheListener(String id,
-                                    List<ZookeeperNodeListener> listeners) {
+                                    List<ZookeeperNodeListener> listeners,
+                                    CountDownLatch readyLatch) {
         this.id = id;
         this.listeners = listeners;
+        this.readyLatch = readyLatch;
     }
 
     @Override
@@ -35,6 +40,7 @@ public class CuratorTreeCacheListener implements TreeCacheListener {
         final String server = client.getZookeeperClient().getCurrentConnectionString();
         if (event.getType() == TreeCacheEvent.Type.INITIALIZED) {
             initialized = true;
+            readyLatch.countDown();
             log.debug("{} tree node sync finished", server);
             listeners.forEach(listener -> listener.syncCompleted(id));
             return;

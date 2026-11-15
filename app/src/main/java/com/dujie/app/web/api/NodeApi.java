@@ -191,7 +191,7 @@ public class NodeApi {
         String serverId = ctx.pathParam("serverId");
         String query = ctx.queryParam("q");
         if (query == null || query.isBlank()) {
-            ctx.json(List.of());
+            ctx.json(Map.of("nodes", List.of(), "truncated", false));
             return;
         }
         try {

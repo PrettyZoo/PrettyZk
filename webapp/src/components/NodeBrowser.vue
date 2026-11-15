@@ -45,18 +45,12 @@
             >
               <template #prefix><Search :size="13" /></template>
             </n-input>
-            <div v-if="searchResults.length > 0" class="search-dropdown">
-              <div
-                v-for="r in searchResults"
-                :key="r.path"
-                class="search-hit"
-                @click="selectSearchResult(r.path)"
-              >
-                {{ r.path }}
-              </div>
-              <div v-if="searchTruncated" class="search-truncated">
-                {{ t('node.searchTruncated') }}
-              </div>
+            <div v-if="searchActive" class="search-summary">
+              <span class="search-status">
+                <Loader2 v-if="searchLoading" :size="12" class="tree-spinner" />
+                {{ searchLoading ? t('node.searching') : t('node.searchResults', { count: searchResults.length }) }}
+              </span>
+              <span v-if="searchTruncated" class="search-hint">{{ t('node.searchTruncated') }}</span>
             </div>
           </div>
 
@@ -88,6 +82,16 @@
                   <span class="tree-label tree-more-label">{{ t('node.loadMore') }}</span>
                 </div>
                 <div
+                  v-else-if="item.type === 'search'"
+                  class="tree-row"
+                  :style="{ paddingLeft: '8px' }"
+                  @click="selectRow(item)"
+                >
+                  <span class="tree-arrow"></span>
+                  <span class="tree-icon"><Search :size="13" /></span>
+                  <span class="tree-label">{{ item.path }}</span>
+                </div>
+                <div
                   v-else
                   class="tree-row"
                   role="treeitem"
@@ -115,6 +119,9 @@
                 </div>
               </template>
             </n-virtual-list>
+            <div v-else-if="searchActive" class="tree-empty">
+              {{ searchLoading ? t('node.searching') : t('node.noSearchResults') }}
+            </div>
             <div v-else-if="connecting" class="tree-empty">{{ t('node.connecting') }}</div>
             <div v-else class="tree-empty">{{ t('node.empty') }}</div>
           </div>
@@ -226,6 +233,7 @@ const nodeData = ref('')
 const searchQuery = ref('')
 const searchResults = ref<any[]>([])
 const searchTruncated = ref(false)
+const searchLoading = ref(false)
 const fourLetterCmd = ref('')
 const fourLetterOutput = ref('')
 const connecting = ref(true)
@@ -240,7 +248,19 @@ const childrenMap = reactive(new Map<string, TreeRow[]>())
 const hasMoreMap = reactive(new Map<string, boolean>())
 const rootNumChildren = ref(0)
 
+const searchActive = computed(() => searchQuery.value.trim().length > 0)
+const searchRows = computed<TreeRow[]>(() =>
+  searchResults.value.map((result: any) => ({
+    type: 'search',
+    path: result.path,
+    name: result.path,
+    depth: 0,
+    numChildren: 0,
+  })),
+)
+
 const visibleRows = computed<TreeRow[]>(() => {
+  if (searchActive.value) return searchRows.value
   const rows: TreeRow[] = []
   const walk = (row: TreeRow) => {
     rows.push(row)
@@ -448,6 +468,10 @@ async function ensureExpanded(path: string) {
 }
 
 async function selectRow(row: TreeRow) {
+  if (row.type === 'search') {
+    await selectSearchResult(row.path)
+    return
+  }
   if (row.type === 'more') {
     if (row.parentPath) await loadMoreChildren(row.parentPath)
     return
@@ -662,8 +686,10 @@ function onSearch() {
   if (!query) {
     searchResults.value = []
     searchTruncated.value = false
+    searchLoading.value = false
     return
   }
+  searchLoading.value = true
   searchTimer = setTimeout(async () => {
     try {
       const result = await api.searchNodes(props.serverId, query)
@@ -672,6 +698,8 @@ function onSearch() {
     } catch {
       searchResults.value = []
       searchTruncated.value = false
+    } finally {
+      searchLoading.value = false
     }
   }, 300)
 }
@@ -679,6 +707,7 @@ function onSearch() {
 async function selectSearchResult(path: string) {
   searchResults.value = []
   searchTruncated.value = false
+  searchLoading.value = false
   searchQuery.value = ''
   await ensureExpanded(path)
   await onSelectNode({ path })
@@ -722,6 +751,23 @@ function connectWs(serverId: string) {
         if (!['added', 'updated', 'deleted'].includes(message.type)) return
         const path = message.path || '/'
         const parent = parentPath(path)
+
+        if (message.type === 'ready') {
+          // TreeCache finished its initial snapshot; refresh loaded pages so
+          // child counts and newly visible nodes are accurate.
+          const paths = new Set<string>(['/', ...expanded])
+          for (const path of paths) {
+            childrenMap.delete(path)
+            hasMoreMap.delete(path)
+            if (path === '/' || expanded.has(path)) {
+              loadChildren(path, true)
+            }
+          }
+          if (selectedNodePath.value) {
+            onSelectNode({ path: selectedNodePath.value })
+          }
+          return
+        }
 
         if (message.type === 'updated') {
           // Metadata/data changed; the tree structure does not.
@@ -941,33 +987,23 @@ onUnmounted(() => {
   font-weight: 600;
   color: var(--text-secondary);
 }
-.search-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 8px;
-  right: 8px;
-  z-index: 100;
-  max-height: 260px;
-  overflow-y: auto;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-}
-.search-hit {
-  padding: 6px 12px;
-  cursor: pointer;
-  font-size: 12px;
-  color: var(--text-primary);
-}
-.search-hit:hover {
-  background: var(--bg-hover);
-}
-.search-truncated {
-  padding: 6px 12px;
-  border-top: 1px solid var(--border-color);
-  color: var(--text-muted);
+.search-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 2px 0;
   font-size: 11px;
+  color: var(--text-muted);
+}
+.search-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-secondary);
+}
+.search-hint {
+  color: var(--warning);
+  line-height: 1.4;
 }
 .tree-scroll {
   flex: 1;

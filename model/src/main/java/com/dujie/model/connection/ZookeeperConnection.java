@@ -5,6 +5,7 @@ import com.dujie.model.node.NodeMode;
 import org.apache.zookeeper.data.Stat;
 
 import java.util.List;
+import java.util.regex.Pattern;
 
 public interface ZookeeperConnection<T> {
 
@@ -27,6 +28,18 @@ public interface ZookeeperConnection<T> {
      */
     default int getChildCount(String path) {
         return -1;
+    }
+
+    /**
+     * Search the cached tree structure. Returns null when the implementation
+     * has no cache, so callers can fall back to a live traversal.
+     */
+    default List<String> searchPaths(Pattern pattern, int limit) {
+        return null;
+    }
+
+    default boolean hasCache() {
+        return false;
     }
 
     String getId();

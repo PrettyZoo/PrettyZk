@@ -51,26 +51,47 @@ public class NodeEventWsManager {
             msg.put("type", eventType);
             msg.put("path", event.getNode().getPath());
             msg.put("server", serverId);
-            String json = JSON.writeValueAsString(msg);
-
-            var staleClients = new java.util.ArrayList<WsContext>();
-            for (WsContext ctx : clients) {
-                if (ctx.session.isOpen()) {
-                    try {
-                        ctx.send(json);
-                    } catch (Exception e) {
-                        LOG.warn("Failed to send WS event", e);
-                        staleClients.add(ctx);
-                    }
-                } else {
-                    staleClients.add(ctx);
-                }
-            }
-            if (!staleClients.isEmpty()) {
-                clients.removeAll(staleClients);
-            }
+            send(clients, JSON.writeValueAsString(msg));
         } catch (Exception e) {
             LOG.warn("Failed to serialize WS event", e);
+        }
+    }
+
+    /**
+     * Tell clients that the initial TreeCache snapshot is ready. The frontend
+     * uses this to refresh child counts after connecting to a large tree.
+     */
+    public void broadcastReady(String serverId) {
+        Set<WsContext> clients = subscribers.get(serverId);
+        if (clients == null || clients.isEmpty()) {
+            return;
+        }
+        try {
+            var msg = new java.util.LinkedHashMap<String, String>();
+            msg.put("type", "ready");
+            msg.put("server", serverId);
+            send(clients, JSON.writeValueAsString(msg));
+        } catch (Exception e) {
+            LOG.warn("Failed to serialize WS ready event", e);
+        }
+    }
+
+    private void send(Set<WsContext> clients, String json) {
+        var staleClients = new java.util.ArrayList<WsContext>();
+        for (WsContext ctx : clients) {
+            if (ctx.session.isOpen()) {
+                try {
+                    ctx.send(json);
+                } catch (Exception e) {
+                    LOG.warn("Failed to send WS event", e);
+                    staleClients.add(ctx);
+                }
+            } else {
+                staleClients.add(ctx);
+            }
+        }
+        if (!staleClients.isEmpty()) {
+            clients.removeAll(staleClients);
         }
     }
 }

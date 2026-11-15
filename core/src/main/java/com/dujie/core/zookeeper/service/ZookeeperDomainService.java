@@ -45,6 +45,10 @@ public class ZookeeperDomainService {
         Zookeeper zookeeper = new ZookeeperFactory().create(serverConfig, nodeListeners, serverListeners);
         zookeeperMap.put(id, zookeeper);
         addressToIdMap.put(address, id);
+        // Start the TreeCache: real-time node events, child counts and the
+        // in-memory search all depend on it. Wait for the initial structure so
+        // the UI does not search an empty cache right after connecting.
+        zookeeper.sync();
     }
 
     public void disconnect(String id) {

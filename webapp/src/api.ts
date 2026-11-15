@@ -1,7 +1,7 @@
 // PrettyZk API client
 
 const API_BASE = ''
-const DEFAULT_TIMEOUT = 15000 // 15s
+const DEFAULT_TIMEOUT = 30000 // 30s; connect waits for the TreeCache snapshot
 
 async function request(path, options: RequestInit = {}) {
   const controller = new AbortController()
