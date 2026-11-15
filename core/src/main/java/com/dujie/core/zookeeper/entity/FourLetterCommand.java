@@ -19,11 +19,11 @@ public class FourLetterCommand {
 
     public String request(String command) {
         try (Socket socket = new Socket()) {
-            socket.connect(new InetSocketAddress(host, port));
-            try (OutputStream outputStream = socket.getOutputStream()) {
-                outputStream.write(command.getBytes());
-                outputStream.flush();
-            }
+            socket.connect(new InetSocketAddress(host, port), 3000);
+            socket.setSoTimeout(5000);
+            OutputStream outputStream = socket.getOutputStream();
+            outputStream.write(command.getBytes());
+            outputStream.flush();
             return readResponse(socket);
         } catch (IOException e) {
             throw new IllegalStateException(e);
