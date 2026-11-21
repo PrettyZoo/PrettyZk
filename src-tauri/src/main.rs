@@ -317,6 +317,27 @@ fn show_error(window: &WebviewWindow, message: &str) {
     let _ = window.eval(&backend_error_script(message));
 }
 
+#[tauri::command]
+fn open_external(url: String) -> Result<(), String> {
+    if !url.starts_with("https://") && !url.starts_with("http://") {
+        return Err("only http(s) URLs can be opened".to_string());
+    }
+    #[cfg(target_os = "macos")]
+    let child = Command::new("open").arg(&url).spawn();
+    #[cfg(target_os = "windows")]
+    let child = Command::new("cmd")
+        .args(["/C", "start", "", url.as_str()])
+        .spawn();
+    #[cfg(target_os = "linux")]
+    let child = Command::new("xdg-open")
+        .arg(&url)
+        .spawn()
+        .or_else(|_| Command::new("gio").args(["open", url.as_str()]).spawn());
+    child
+        .map(|_| ())
+        .map_err(|e| format!("cannot open browser: {e}"))
+}
+
 fn run_backend(
     app: &tauri::AppHandle,
     window: &WebviewWindow,
@@ -445,6 +466,7 @@ fn main() {
             child: Mutex::new(None),
             status: Mutex::new(BackendStatus::Starting),
         })
+        .invoke_handler(tauri::generate_handler![open_external])
         .setup(|app| {
             let page_app = app.handle().clone();
             let window = WebviewWindowBuilder::new(

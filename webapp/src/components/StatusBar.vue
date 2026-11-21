@@ -27,8 +27,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { t } from '../i18n.ts'
-import { api } from '../api.ts'
-import { dialog, toast } from '../composables/feedback.ts'
+import { checkForUpdates } from '../updates.ts'
 
 const props = defineProps({
   server: { type: Object, default: null },
@@ -50,18 +49,7 @@ async function checkUpdate() {
   if (checking.value) return
   checking.value = true
   try {
-    const result = await api.checkLatestVersion()
-    if (result.updateAvailable) {
-      dialog.info({
-        title: t('status.checkUpdate'),
-        content: `${t('status.updateAvailable', { version: result.latest })}\n${result.url}`,
-        positiveText: t('common.confirm'),
-      })
-    } else {
-      toast(t('status.upToDate'), 'success')
-    }
-  } catch (e: any) {
-    toast(t('status.updateFailed', { msg: e.message }), 'error')
+    await checkForUpdates({ silent: false })
   } finally {
     checking.value = false
   }

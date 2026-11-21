@@ -104,6 +104,15 @@ export async function httpUrl(path: string): Promise<string> {
   return (await backendUrl()) + path
 }
 
+export async function openExternal(url: string): Promise<void> {
+  if (!/^https?:\/\//i.test(url)) throw new Error('invalid URL')
+  if (runningInTauri() && backendWindow?.__TAURI_INTERNALS__) {
+    await backendWindow.__TAURI_INTERNALS__.invoke('open_external', { url })
+    return
+  }
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
+
 export async function wsUrl(path: string): Promise<string> {
   const base = await backendUrl()
   if (base) return base.replace(/^http/, 'ws') + path

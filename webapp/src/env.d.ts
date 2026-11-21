@@ -11,7 +11,9 @@ interface Window {
   __PRETTYZK_FRONTEND_READY__?: boolean
   __PRETTYZK_BACKEND__?: string
   __PRETTYZK_BACKEND_ERROR__?: string
-  __TAURI_INTERNALS__?: unknown
+  __TAURI_INTERNALS__?: {
+    invoke: (cmd: string, args?: Record<string, unknown>) => Promise<unknown>
+  }
   __toast?: (message: string, type?: string, duration?: number) => void
   __dialog?: {
     show: boolean

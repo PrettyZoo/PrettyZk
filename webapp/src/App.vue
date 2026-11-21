@@ -71,6 +71,7 @@ import { NConfigProvider } from 'naive-ui'
 import { state } from './state.ts'
 import { backendState } from './backend.ts'
 import { api } from './api.ts'
+import { checkForUpdates } from './updates.ts'
 import { setLocale, getLocale, t } from './i18n.ts'
 import { naiveTheme as resolveNaiveTheme, darkThemeOverrides, lightThemeOverrides } from './theme.ts'
 import { toast, confirm } from './composables/feedback.ts'
@@ -135,6 +136,11 @@ onMounted(async () => {
   } catch (e) {
     version.value = '3.0.0'
   }
+
+  // Silent update check; prompts only when a newer release/tag exists.
+  window.setTimeout(() => {
+    void checkForUpdates({ silent: true })
+  }, 3000)
 })
 
 function onSelectServer(id: string) {

@@ -80,6 +80,8 @@ const messages: Record<string, Record<string, unknown>> = {
       checkUpdate: 'Check for updates',
       upToDate: 'You are running the latest version',
       updateAvailable: 'New version available: {version}',
+      updateDownload: 'Download',
+      updateLater: 'Later',
       updateFailed: 'Update check failed: {msg}',
     },
     node: {
@@ -227,6 +229,8 @@ const messages: Record<string, Record<string, unknown>> = {
       checkUpdate: '检查更新',
       upToDate: '已是最新版本',
       updateAvailable: '发现新版本：{version}',
+      updateDownload: '前往下载',
+      updateLater: '稍后',
       updateFailed: '检查更新失败: {msg}',
     },
     node: {
