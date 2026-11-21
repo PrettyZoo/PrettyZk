@@ -58,7 +58,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev \
-            patchelf libgtk-3-dev libxdo-dev libfuse2
+            patchelf libgtk-3-dev libxdo-dev libfuse2 \
+            squashfs-tools xdg-utils file
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -114,17 +115,23 @@ jobs:
         env:
           # linuxdeploy itself is an AppImage; run it without FUSE on runners.
           APPIMAGE_EXTRACT_AND_RUN: 1
+          # linuxdeploy's bundled strip is too old for modern ELF (.relr.dyn).
+          NO_STRIP: 1
         shell: bash
         run: |
           set -o pipefail
-          npx tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} 2>&1 | tee build-installer.log
+          npx tauri build --verbose --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} 2>&1 | tee build-installer.log
 
       - name: Report build failure
         if: failure()
         shell: bash
         run: |
           if [ -f build-installer.log ]; then
-            tail -n 10 build-installer.log | while IFS= read -r line; do
+            relevant=$(grep -iE 'error|fail|linuxdeploy|strip|fuse|mksquashfs|gdk-pixbuf|appimage|cannot|not found' build-installer.log || true)
+            if [ -z "$relevant" ]; then
+              relevant=$(tail -n 10 build-installer.log)
+            fi
+            printf '%s\n' "$relevant" | tail -n 10 | while IFS= read -r line; do
               printf '::error::%s\n' "$line"
             done
           fi
