@@ -4,6 +4,10 @@ import { ref } from 'vue'
 
 const messages: Record<string, Record<string, unknown>> = {
   en: {
+    app: {
+      startingBackend: 'Starting local service…',
+      backendFailed: 'Local service failed to start',
+    },
     sidebar: {
       newConnection: 'New Connection',
       search: 'Search connections...',
@@ -147,6 +151,10 @@ const messages: Record<string, Record<string, unknown>> = {
   },
 
   zh: {
+    app: {
+      startingBackend: '正在启动本地服务…',
+      backendFailed: '本地服务启动失败',
+    },
     sidebar: {
       newConnection: '新建连接',
       search: '搜索连接...',

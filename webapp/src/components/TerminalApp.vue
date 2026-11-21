@@ -8,6 +8,7 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import { state } from '../state.ts'
+import { wsUrl } from '../api.ts'
 
 const props = defineProps({ serverId: { type: String, required: true } })
 
@@ -107,9 +108,14 @@ onUnmounted(() => {
   if (term) term.dispose()
 })
 
-function connectWs() {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  ws = new WebSocket(`${protocol}//${window.location.host}/ws/terminal/${encodeURIComponent(props.serverId)}`)
+async function connectWs() {
+  try {
+    ws = new WebSocket(await wsUrl(`/ws/terminal/${encodeURIComponent(props.serverId)}`))
+  } catch (e: any) {
+    term.write(`\r\n\x1b[31m${e?.message || e}\x1b[0m\r\n`)
+    return
+  }
+  if (!ws) return
 
   ws.onopen = () => term.write('\x1b[32mConnected\x1b[0m\r\n')
 

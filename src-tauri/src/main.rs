@@ -8,6 +8,7 @@ use std::process::{Child, Command, Stdio};
 use std::sync::mpsc;
 use std::sync::Mutex;
 use std::time::Duration;
+use tauri::webview::PageLoadEvent;
 use tauri::{Manager, RunEvent, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 const BACKEND_MAIN_CLASS: &str = "com.dujie.app.Application";
@@ -26,7 +27,11 @@ const BACKEND_LOST_SCRIPT: &str = r#"
 })();
 "#;
 
-struct BackendState(Mutex<Option<Child>>);
+struct BackendState {
+    child: Mutex<Option<Child>>,
+    port: Mutex<Option<u16>>,
+    error: Mutex<Option<String>>,
+}
 
 fn path_str(p: &Path) -> &str {
     p.to_str().unwrap_or("<non-utf8-path>")
@@ -247,7 +252,7 @@ fn append_log(path: &Path, line: &str) {
 
 fn stop_backend(app: &tauri::AppHandle) {
     if let Some(state) = app.try_state::<BackendState>() {
-        if let Ok(mut guard) = state.0.lock() {
+        if let Ok(mut guard) = state.child.lock() {
             if let Some(mut child) = guard.take() {
                 let _ = child.kill();
                 let _ = child.wait();
@@ -256,11 +261,55 @@ fn stop_backend(app: &tauri::AppHandle) {
     }
 }
 
+fn backend_ready_script(port: u16) -> String {
+    format!(
+        "window.__PRETTYZK_BACKEND__ = 'http://127.0.0.1:{port}';\
+         window.dispatchEvent(new Event('prettyzk-backend-ready'));"
+    )
+}
+
+fn backend_error_script(message: &str) -> String {
+    let payload = serde_json::to_string(message).unwrap_or_else(|_| "\"startup failed\"".into());
+    format!(
+        "window.__PRETTYZK_BACKEND_ERROR__ = {payload};\
+         window.dispatchEvent(new CustomEvent('prettyzk-backend-error', {{ detail: {payload} }}));\
+         if (!window.__PRETTYZK_FRONTEND_READY__) {{\
+           (function () {{\
+             var id = 'prettyzk-backend-error-banner';\
+             if (document.getElementById(id)) return;\
+             var el = document.createElement('div');\
+             el.id = id;\
+             el.textContent = {payload};\
+             el.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483647;padding:8px 12px;background:#b42318;color:#fff;text-align:center;font:12px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;white-space:pre-wrap;';\
+             if (document.body) document.body.appendChild(el);\
+             else document.addEventListener('DOMContentLoaded', function () {{ document.body.appendChild(el); }});\
+           }})();\
+         }}"
+    )
+}
+
+fn inject_backend_state(app: &tauri::AppHandle, window: &WebviewWindow) {
+    let Some(state) = app.try_state::<BackendState>() else {
+        return;
+    };
+    if let Some(port) = state.port.lock().ok().and_then(|p| *p) {
+        let _ = window.eval(&backend_ready_script(port));
+        return;
+    }
+    if let Some(error) = state.error.lock().ok().and_then(|e| e.clone()) {
+        let _ = window.eval(&backend_error_script(&error));
+    }
+}
+
 fn show_error(window: &WebviewWindow, message: &str, log: &Path) {
     let text = format!("{}\n\n日志文件：{}", message, log.display());
-    let payload = serde_json::to_string(&text).unwrap_or_else(|_| "\"startup failed\"".into());
-    let script = format!("window.showStartupError({});", payload);
-    let _ = window.eval(&script);
+    let script = backend_error_script(&text);
+    // The page may still be loading when startup fails; retry briefly so the
+    // error reaches the UI even if the first eval lands before the document.
+    for _ in 0..10 {
+        let _ = window.eval(&script);
+        std::thread::sleep(Duration::from_millis(300));
+    }
 }
 
 fn run_backend(
@@ -283,7 +332,7 @@ fn run_backend(
         .ok_or_else(|| "backend stderr is not available".to_string())?;
 
     if let Some(state) = app.try_state::<BackendState>() {
-        if let Ok(mut guard) = state.0.lock() {
+        if let Ok(mut guard) = state.child.lock() {
             *guard = Some(child);
         }
     }
@@ -337,13 +386,23 @@ fn run_backend(
         return Err(format!("后端健康检查失败（端口 {}）", port));
     }
 
-    let url = tauri::Url::parse(&format!("http://127.0.0.1:{}", port))
-        .map_err(|e| format!("无效的后端地址: {e}"))?;
-    let nav_window = window.clone();
-    app.run_on_main_thread(move || {
-        let _ = nav_window.navigate(url);
-    })
-    .map_err(|e| format!("无法切换窗口地址: {e}"))?;
+    if let Some(state) = app.try_state::<BackendState>() {
+        if let Ok(mut guard) = state.port.lock() {
+            *guard = Some(port);
+        }
+    }
+
+    // The window already shows the app shell; hand it the backend port.
+    // Retry briefly because the webview may still be loading when the backend
+    // becomes ready (on_page_load also injects the port on completion).
+    for _ in 0..10 {
+        let notify_window = window.clone();
+        let script = backend_ready_script(port);
+        let _ = app.run_on_main_thread(move || {
+            let _ = notify_window.eval(&script);
+        });
+        std::thread::sleep(Duration::from_millis(200));
+    }
 
     // If the backend dies after startup, surface a banner instead of leaving
     // a UI where every action silently fails.
@@ -381,12 +440,17 @@ fn main() {
             }
         }))
         .plugin(tauri_plugin_window_state::Builder::default().build())
-        .manage(BackendState(Mutex::new(None)))
+        .manage(BackendState {
+            child: Mutex::new(None),
+            port: Mutex::new(None),
+            error: Mutex::new(None),
+        })
         .setup(|app| {
+            let page_app = app.handle().clone();
             let window = WebviewWindowBuilder::new(
                 app,
                 "main",
-                WebviewUrl::App("splash.html".into()),
+                WebviewUrl::App("index.html".into()),
             )
             .title("PrettyZk")
             .inner_size(1050.0, 650.0)
@@ -396,14 +460,26 @@ fn main() {
                 url.scheme() == "tauri"
                     || url.scheme() == "about"
                     || url.host_str() == Some("tauri.localhost")
-                    || (url.scheme() == "http" && url.host_str() == Some("127.0.0.1"))
+                    || (url.scheme() == "http"
+                        && matches!(url.host_str(), Some("127.0.0.1") | Some("localhost")))
+            })
+            .on_page_load(move |window, payload| {
+                if matches!(payload.event(), PageLoadEvent::Finished) {
+                    inject_backend_state(&page_app, &window);
+                }
             })
             .build()?;
 
             let handle = app.handle().clone();
+            let error_handle = handle.clone();
             let log = log_path(&handle);
             std::thread::spawn(move || {
                 if let Err(error) = run_backend(&handle, &window, &log) {
+                    if let Some(state) = error_handle.try_state::<BackendState>() {
+                        if let Ok(mut guard) = state.error.lock() {
+                            *guard = Some(error.clone());
+                        }
+                    }
                     show_error(&window, &error, &log);
                 }
             });

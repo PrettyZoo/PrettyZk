@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.Map;
+import java.util.Set;
 
 public class PrettyZkWebServer {
 
@@ -25,6 +26,17 @@ public class PrettyZkWebServer {
     private final LogApi logApi;
 
     private final NodeEventWsManager nodeEventWsManager;
+
+    // The Tauri webview serves the UI from its own origin, so the API is
+    // cross-origin there. Javalin's built-in CORS plugin cannot parse origins
+    // without explicit ports (tauri://localhost), hence this small allowlist.
+    private static final Set<String> ALLOWED_ORIGINS = Set.of(
+            "tauri://localhost",
+            "http://tauri.localhost",
+            "https://tauri.localhost",
+            "http://localhost:5173",
+            "http://127.0.0.1:5173"
+    );
 
     private volatile Javalin app;
 
@@ -70,6 +82,7 @@ public class PrettyZkWebServer {
             ctx.json(Map.of("error", "Internal server error"));
         });
 
+        registerCors();
         registerRoutes();
         app.start(host, port);
         LOG.info("PrettyZk server started on http://{}:{}", host, port);
@@ -91,6 +104,21 @@ public class PrettyZkWebServer {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    private void registerCors() {
+        app.before(ctx -> {
+            String origin = ctx.header("Origin");
+            if (origin != null && ALLOWED_ORIGINS.contains(origin)) {
+                ctx.header("Access-Control-Allow-Origin", origin);
+                ctx.header("Vary", "Origin");
+                ctx.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+                ctx.header("Access-Control-Allow-Headers", "Content-Type");
+                ctx.header("Access-Control-Max-Age", "86400");
+            }
+        });
+        // Answer preflight requests; the filter above sets the CORS headers.
+        app.options("/*", ctx -> ctx.status(204));
     }
 
     private void registerRoutes() {

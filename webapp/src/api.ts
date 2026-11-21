@@ -1,14 +1,69 @@
 // PrettyZk API client
 
-const API_BASE = ''
 const DEFAULT_TIMEOUT = 30000 // 30s; connect waits for the TreeCache snapshot
 
-async function request(path, options: RequestInit = {}) {
+type BackendWindow = Window & {
+  __PRETTYZK_BACKEND__?: string
+  __PRETTYZK_BACKEND_ERROR__?: string
+  __PRETTYZK_FRONTEND_READY__?: boolean
+  __TAURI_INTERNALS__?: unknown
+}
+
+const backendWindow = typeof window !== 'undefined' ? (window as BackendWindow) : null
+let backendBase: string | null = backendWindow?.__PRETTYZK_BACKEND__ ?? null
+let backendError: string | null = backendWindow?.__PRETTYZK_BACKEND_ERROR__ ?? null
+let baseWaiters: Array<{ resolve: (base: string) => void; reject: (error: Error) => void }> = []
+
+function flushBaseWaiters() {
+  if (backendBase !== null) {
+    const base = backendBase
+    baseWaiters.splice(0).forEach((waiter) => waiter.resolve(base))
+  } else if (backendError !== null) {
+    const error = new Error(backendError)
+    baseWaiters.splice(0).forEach((waiter) => waiter.reject(error))
+  }
+}
+
+if (backendWindow) {
+  backendWindow.addEventListener('prettyzk-backend-ready', () => {
+    backendBase = backendWindow.__PRETTYZK_BACKEND__ ?? null
+    backendError = null
+    flushBaseWaiters()
+  })
+  backendWindow.addEventListener('prettyzk-backend-error', (event) => {
+    const detail = (event as CustomEvent).detail
+    backendError = typeof detail === 'string' && detail ? detail : '本地服务启动失败'
+    flushBaseWaiters()
+  })
+}
+
+function runningInTauri(): boolean {
+  return !!backendWindow && '__TAURI_INTERNALS__' in backendWindow
+}
+
+function backendUrl(): Promise<string> {
+  if (backendBase !== null) return Promise.resolve(backendBase)
+  if (backendError !== null) return Promise.reject(new Error(backendError))
+  // When the UI is served by the Java backend itself (browser / Vite dev),
+  // relative URLs already point at it.
+  if (!runningInTauri()) return Promise.resolve('')
+  return new Promise((resolve, reject) => baseWaiters.push({ resolve, reject }))
+}
+
+export async function wsUrl(path: string): Promise<string> {
+  const base = await backendUrl()
+  if (base) return base.replace(/^http/, 'ws') + path
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  return `${protocol}//${window.location.host}${path}`
+}
+
+async function request(path: string, options: RequestInit = {}) {
+  const base = await backendUrl()
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT)
 
   try {
-    const url = `${API_BASE}${path}`
+    const url = `${base}${path}`
     const res = await fetch(url, {
       signal: controller.signal,
       headers: { 'Content-Type': 'application/json', ...options.headers },

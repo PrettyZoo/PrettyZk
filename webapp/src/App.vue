@@ -53,12 +53,20 @@
           :version="version"
         />
       </main>
+
+      <div v-if="!backendReady && !backendError" class="backend-hint">
+        <span class="backend-hint-spinner"></span>
+        {{ t('app.startingBackend') }}
+      </div>
+      <div v-else-if="backendError" class="backend-hint backend-hint-error">
+        {{ backendError }}
+      </div>
     </div>
   </n-config-provider>
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
+import { computed, defineAsyncComponent, onMounted, onUnmounted, ref } from 'vue'
 import { NConfigProvider } from 'naive-ui'
 import { state } from './state.ts'
 import { api } from './api.ts'
@@ -81,6 +89,35 @@ const activeServerId = ref<string | null>(null)
 const editServerId = ref<string | null>(null)
 const currentLocale = ref(getLocale())
 const version = ref('')
+
+// The shell renders immediately. Only API-backed parts wait for the local
+// Java service; in a plain browser the UI is served by that service already.
+const backendReady = ref(
+  !(typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) ||
+    Boolean(window.__PRETTYZK_BACKEND__),
+)
+const backendError = ref(window.__PRETTYZK_BACKEND_ERROR__ ?? '')
+
+function onBackendReady() {
+  backendReady.value = true
+  backendError.value = ''
+}
+
+function onBackendError(event: Event) {
+  const detail = (event as CustomEvent).detail
+  backendError.value =
+    typeof detail === 'string' && detail ? detail : t('app.backendFailed')
+  backendReady.value = false
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('prettyzk-backend-ready', onBackendReady)
+  window.addEventListener('prettyzk-backend-error', onBackendError)
+}
+onUnmounted(() => {
+  window.removeEventListener('prettyzk-backend-ready', onBackendReady)
+  window.removeEventListener('prettyzk-backend-error', onBackendError)
+})
 
 const naiveTheme = computed(() => resolveNaiveTheme(state.config.theme === 'dark'))
 const themeOverrides = computed(() => {
@@ -246,5 +283,45 @@ function onBackFromNodeBrowser() {
   flex-direction: column;
   background: var(--bg-primary);
   min-width: 0;
+}
+.backend-hint {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(80vw, 640px);
+  padding: 6px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--toolbar-bg);
+  color: var(--text-secondary);
+  font-size: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+}
+.backend-hint-error {
+  border-color: #b42318;
+  border-radius: 8px;
+  background: #b42318;
+  color: #fff;
+  pointer-events: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.backend-hint-spinner {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--success);
+  border-radius: 50%;
+  animation: backend-spin 0.8s linear infinite;
+}
+@keyframes backend-spin {
+  to { transform: rotate(360deg); }
 }
 </style>

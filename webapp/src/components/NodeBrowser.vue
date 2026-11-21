@@ -204,7 +204,7 @@ import {
   TerminalSquare,
   Wrench,
 } from 'lucide-vue-next'
-import { api } from '../api.ts'
+import { api, wsUrl } from '../api.ts'
 import { t } from '../i18n.ts'
 import { state } from '../state.ts'
 import { toast, confirm } from '../composables/feedback.ts'
@@ -751,16 +751,13 @@ async function connectAndLoad() {
 
 let nodeWs: WebSocket | null = null
 
-function connectWs(serverId: string) {
+async function connectWs(serverId: string) {
   if (nodeWs) {
     nodeWs.close()
     nodeWs = null
   }
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
   try {
-    nodeWs = new WebSocket(
-      `${protocol}//${window.location.host}/ws/nodes/${encodeURIComponent(serverId)}`,
-    )
+    nodeWs = new WebSocket(await wsUrl(`/ws/nodes/${encodeURIComponent(serverId)}`))
     nodeWs.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data)
