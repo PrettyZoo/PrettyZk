@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+      - '[0-9]*'
   workflow_dispatch:
 
 permissions:
@@ -79,7 +80,7 @@ jobs:
 
       - name: Prepare UI + self-contained backend payload
         env:
-          VERSION: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
+          VERSION: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
         run: node scripts/prepare-desktop.mjs
 
       - name: Smoke test backend (JRE + jars + /api/health)
@@ -113,7 +114,20 @@ jobs:
         env:
           # linuxdeploy itself is an AppImage; run it without FUSE on runners.
           APPIMAGE_EXTRACT_AND_RUN: 1
-        run: npx tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
+        shell: bash
+        run: |
+          set -o pipefail
+          npx tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} 2>&1 | tee build-installer.log
+
+      - name: Report build failure
+        if: failure()
+        shell: bash
+        run: |
+          if [ -f build-installer.log ]; then
+            tail -n 10 build-installer.log | while IFS= read -r line; do
+              printf '::error::%s\n' "$line"
+            done
+          fi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -129,7 +143,7 @@ jobs:
   release:
     name: Publish draft release
     needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
