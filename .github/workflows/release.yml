@@ -120,7 +120,26 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          npx tauri build --verbose --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} 2>&1 | tee build-installer.log
+          # linuxdeploy scans the bundled JRE and cannot find libjvm.so, which
+          # lives in runtime/lib/server. Put both JRE lib dirs on its search path.
+          export LD_LIBRARY_PATH="$PWD/build/desktop/runtime/lib:$PWD/build/desktop/runtime/lib/server${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+          # macOS DMG creation occasionally fails to find its mounted image.
+          attempts=1
+          if [ "${{ runner.os }}" = "macOS" ]; then attempts=3; fi
+
+          for attempt in $(seq 1 "$attempts"); do
+            if npx tauri build --verbose --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} 2>&1 | tee build-installer.log; then
+              exit 0
+            fi
+            echo "::warning::Tauri build attempt $attempt/$attempts failed"
+            if [ "${{ runner.os }}" = "macOS" ]; then
+              hdiutil info | awk '/PrettyZk/ {print $1}' | while IFS= read -r dev; do
+                hdiutil detach "$dev" >/dev/null 2>&1 || true
+              done
+            fi
+          done
+          exit 1
 
       - name: Report build failure
         if: failure()
