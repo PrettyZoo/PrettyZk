@@ -2,14 +2,7 @@
 
 const DEFAULT_TIMEOUT = 30000 // 30s; connect waits for the TreeCache snapshot
 
-type BackendWindow = Window & {
-  __PRETTYZK_BACKEND__?: string
-  __PRETTYZK_BACKEND_ERROR__?: string
-  __PRETTYZK_FRONTEND_READY__?: boolean
-  __TAURI_INTERNALS__?: unknown
-}
-
-const backendWindow = typeof window !== 'undefined' ? (window as BackendWindow) : null
+const backendWindow = typeof window !== 'undefined' ? window : null
 let backendBase: string | null = backendWindow?.__PRETTYZK_BACKEND__ ?? null
 let backendError: string | null = backendWindow?.__PRETTYZK_BACKEND_ERROR__ ?? null
 let baseWaiters: Array<{ resolve: (base: string) => void; reject: (error: Error) => void }> = []
@@ -64,10 +57,16 @@ async function request(path: string, options: RequestInit = {}) {
 
   try {
     const url = `${base}${path}`
+    // Only JSON bodies need this header; sending it on GETs would force a
+    // CORS preflight for every request.
+    const headers = new Headers(options.headers)
+    if (options.body != null && !headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json')
+    }
     const res = await fetch(url, {
-      signal: controller.signal,
-      headers: { 'Content-Type': 'application/json', ...options.headers },
       ...options,
+      signal: controller.signal,
+      headers,
     })
     if (!res.ok) {
       const text = await res.text()

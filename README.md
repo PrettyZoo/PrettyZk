@@ -52,7 +52,7 @@ need Java, Node, Rust, or an internet connection.
 ### Development
 
 ```bash
-# Option A: full desktop shell (splash + embedded backend)
+# Option A: full desktop shell (immediate UI + embedded backend)
 npm run prepare
 npm run dev
 

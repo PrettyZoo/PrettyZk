@@ -109,9 +109,9 @@ public class PrettyZkWebServer {
     private void registerCors() {
         app.before(ctx -> {
             String origin = ctx.header("Origin");
+            ctx.header("Vary", "Origin");
             if (origin != null && ALLOWED_ORIGINS.contains(origin)) {
                 ctx.header("Access-Control-Allow-Origin", origin);
-                ctx.header("Vary", "Origin");
                 ctx.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
                 ctx.header("Access-Control-Allow-Headers", "Content-Type");
                 ctx.header("Access-Control-Max-Age", "86400");

@@ -51,7 +51,7 @@ npx tauri build --bundles dmg   # macOS；Windows 用 --bundles nsis
 ### 开发模式
 
 ```bash
-# 方式 A：完整桌面壳（splash + 内置后端）
+# 方式 A：完整桌面壳（页面立即显示 + 内置后端）
 npm run prepare
 npm run dev
 

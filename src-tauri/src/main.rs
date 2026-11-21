@@ -27,10 +27,16 @@ const BACKEND_LOST_SCRIPT: &str = r#"
 })();
 "#;
 
+#[derive(Clone)]
+enum BackendStatus {
+    Starting,
+    Ready(u16),
+    Failed(String),
+}
+
 struct BackendState {
     child: Mutex<Option<Child>>,
-    port: Mutex<Option<u16>>,
-    error: Mutex<Option<String>>,
+    status: Mutex<BackendStatus>,
 }
 
 fn path_str(p: &Path) -> &str {
@@ -212,6 +218,8 @@ fn start_backend(java: &Path, base: &Path, port: u16) -> Result<Child, String> {
 fn check_server(port: u16) -> bool {
     let addr: std::net::SocketAddr = (std::net::Ipv4Addr::LOCALHOST, port).into();
     if let Ok(mut stream) = TcpStream::connect_timeout(&addr, Duration::from_secs(2)) {
+        let _ = stream.set_read_timeout(Some(Duration::from_secs(2)));
+        let _ = stream.set_write_timeout(Some(Duration::from_secs(2)));
         let request = format!(
             "GET /api/health HTTP/1.1\r\nHost: 127.0.0.1:{}\r\nConnection: close\r\n\r\n",
             port
@@ -292,24 +300,22 @@ fn inject_backend_state(app: &tauri::AppHandle, window: &WebviewWindow) {
     let Some(state) = app.try_state::<BackendState>() else {
         return;
     };
-    if let Some(port) = state.port.lock().ok().and_then(|p| *p) {
-        let _ = window.eval(&backend_ready_script(port));
-        return;
-    }
-    if let Some(error) = state.error.lock().ok().and_then(|e| e.clone()) {
-        let _ = window.eval(&backend_error_script(&error));
+    let status = state.status.lock().ok().map(|guard| (*guard).clone());
+    match status {
+        Some(BackendStatus::Ready(port)) => {
+            let _ = window.eval(&backend_ready_script(port));
+        }
+        Some(BackendStatus::Failed(error)) => {
+            let _ = window.eval(&backend_error_script(&error));
+        }
+        Some(BackendStatus::Starting) | None => {}
     }
 }
 
 fn show_error(window: &WebviewWindow, message: &str, log: &Path) {
     let text = format!("{}\n\n日志文件：{}", message, log.display());
-    let script = backend_error_script(&text);
-    // The page may still be loading when startup fails; retry briefly so the
-    // error reaches the UI even if the first eval lands before the document.
-    for _ in 0..10 {
-        let _ = window.eval(&script);
-        std::thread::sleep(Duration::from_millis(300));
-    }
+    // If the webview is still loading, on_page_load replays the stored error.
+    let _ = window.eval(&backend_error_script(&text));
 }
 
 fn run_backend(
@@ -387,22 +393,18 @@ fn run_backend(
     }
 
     if let Some(state) = app.try_state::<BackendState>() {
-        if let Ok(mut guard) = state.port.lock() {
-            *guard = Some(port);
+        if let Ok(mut guard) = state.status.lock() {
+            *guard = BackendStatus::Ready(port);
         }
     }
 
     // The window already shows the app shell; hand it the backend port.
-    // Retry briefly because the webview may still be loading when the backend
-    // becomes ready (on_page_load also injects the port on completion).
-    for _ in 0..10 {
-        let notify_window = window.clone();
-        let script = backend_ready_script(port);
-        let _ = app.run_on_main_thread(move || {
-            let _ = notify_window.eval(&script);
-        });
-        std::thread::sleep(Duration::from_millis(200));
-    }
+    // If the webview is still loading, on_page_load injects the stored status.
+    let notify_app = app.clone();
+    let notify_window = window.clone();
+    let _ = app.run_on_main_thread(move || {
+        inject_backend_state(&notify_app, &notify_window);
+    });
 
     // If the backend dies after startup, surface a banner instead of leaving
     // a UI where every action silently fails.
@@ -442,8 +444,7 @@ fn main() {
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(BackendState {
             child: Mutex::new(None),
-            port: Mutex::new(None),
-            error: Mutex::new(None),
+            status: Mutex::new(BackendStatus::Starting),
         })
         .setup(|app| {
             let page_app = app.handle().clone();
@@ -476,8 +477,8 @@ fn main() {
             std::thread::spawn(move || {
                 if let Err(error) = run_backend(&handle, &window, &log) {
                     if let Some(state) = error_handle.try_state::<BackendState>() {
-                        if let Ok(mut guard) = state.error.lock() {
-                            *guard = Some(error.clone());
+                        if let Ok(mut guard) = state.status.lock() {
+                            *guard = BackendStatus::Failed(error.clone());
                         }
                     }
                     show_error(&window, &error, &log);

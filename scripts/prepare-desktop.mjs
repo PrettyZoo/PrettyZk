@@ -4,7 +4,7 @@
  *
  *   1. webapp: install + vite build -> webapp/dist
  *   2. Gradle: installDist + jlink + stage -> build/desktop
- *   3. verify JRE, jars, splash and UI assets
+ *   3. verify JRE, jars and UI assets
  *   4. optionally sync the version from the VERSION env var / git tag
  *
  * The script resolves the repository root from its own location, so it works
@@ -69,7 +69,6 @@ if (!existsSync(libDir) || readdirSync(libDir).filter((f) => f.endsWith('.jar'))
   fail(`missing backend jars: ${libDir}`)
 }
 if (!existsSync(path.join(distDir, 'index.html'))) fail(`missing UI build: ${distDir}/index.html`)
-if (!existsSync(path.join(distDir, 'splash.html'))) fail(`missing splash page: ${distDir}/splash.html`)
 
 console.log(`\n[prepare-desktop] ready: ${version ? `v${version}` : 'unknown version'}`)
 console.log(`  JRE:     ${java}`)
