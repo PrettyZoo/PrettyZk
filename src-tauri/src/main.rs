@@ -312,10 +312,9 @@ fn inject_backend_state(app: &tauri::AppHandle, window: &WebviewWindow) {
     }
 }
 
-fn show_error(window: &WebviewWindow, message: &str, log: &Path) {
-    let text = format!("{}\n\n日志文件：{}", message, log.display());
+fn show_error(window: &WebviewWindow, message: &str) {
     // If the webview is still loading, on_page_load replays the stored error.
-    let _ = window.eval(&backend_error_script(&text));
+    let _ = window.eval(&backend_error_script(message));
 }
 
 fn run_backend(
@@ -375,7 +374,7 @@ fn run_backend(
         Ok(port) => port,
         Err(_) => {
             stop_backend(app);
-            return Err("后端在 120 秒内没有报告端口，请查看日志".to_string());
+            return Err("backend did not report a port within 120 seconds".to_string());
         }
     };
 
@@ -389,7 +388,7 @@ fn run_backend(
     }
     if !healthy {
         stop_backend(app);
-        return Err(format!("后端健康检查失败（端口 {}）", port));
+        return Err(format!("backend health check failed on port {port}"));
     }
 
     if let Some(state) = app.try_state::<BackendState>() {
@@ -476,12 +475,13 @@ fn main() {
             let log = log_path(&handle);
             std::thread::spawn(move || {
                 if let Err(error) = run_backend(&handle, &window, &log) {
+                    let text = format!("{}\n\nLog file: {}", error, log.display());
                     if let Some(state) = error_handle.try_state::<BackendState>() {
                         if let Ok(mut guard) = state.status.lock() {
-                            *guard = BackendStatus::Failed(error.clone());
+                            *guard = BackendStatus::Failed(text.clone());
                         }
                     }
-                    show_error(&window, &error, &log);
+                    show_error(&window, &text);
                 }
             });
             Ok(())

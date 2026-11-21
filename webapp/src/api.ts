@@ -1,46 +1,107 @@
 // PrettyZk API client
 
+import { backendState } from './backend.ts'
+
 const DEFAULT_TIMEOUT = 30000 // 30s; connect waits for the TreeCache snapshot
+const BACKEND_WAIT_TIMEOUT = 180000 // Rust waits 120s for a port + 30s health
 
 const backendWindow = typeof window !== 'undefined' ? window : null
 let backendBase: string | null = backendWindow?.__PRETTYZK_BACKEND__ ?? null
 let backendError: string | null = backendWindow?.__PRETTYZK_BACKEND_ERROR__ ?? null
-let baseWaiters: Array<{ resolve: (base: string) => void; reject: (error: Error) => void }> = []
+
+type BaseWaiter = {
+  resolve: (base: string) => void
+  reject: (error: Error) => void
+  timer: ReturnType<typeof setTimeout>
+}
+let baseWaiters: BaseWaiter[] = []
+
+function runningInTauri(): boolean {
+  return (
+    !!backendWindow &&
+    (backendWindow.isTauri === true || '__TAURI_INTERNALS__' in backendWindow)
+  )
+}
+
+function markReady() {
+  backendState.ready = true
+  backendState.error = ''
+}
+
+function markError(message: string) {
+  backendError = message
+  backendState.ready = false
+  backendState.error = message
+}
+
+if (runningInTauri()) {
+  if (backendBase !== null) markReady()
+  else if (backendError !== null) markError(backendError)
+} else {
+  // Browser / Vite dev: the UI is served by the Java backend itself.
+  markReady()
+}
 
 function flushBaseWaiters() {
+  if (backendBase === null && backendError === null) return
+  const waiters = baseWaiters
+  baseWaiters = []
   if (backendBase !== null) {
     const base = backendBase
-    baseWaiters.splice(0).forEach((waiter) => waiter.resolve(base))
+    for (const waiter of waiters) {
+      clearTimeout(waiter.timer)
+      waiter.resolve(base)
+    }
   } else if (backendError !== null) {
     const error = new Error(backendError)
-    baseWaiters.splice(0).forEach((waiter) => waiter.reject(error))
+    for (const waiter of waiters) {
+      clearTimeout(waiter.timer)
+      waiter.reject(error)
+    }
   }
 }
 
 if (backendWindow) {
   backendWindow.addEventListener('prettyzk-backend-ready', () => {
     backendBase = backendWindow.__PRETTYZK_BACKEND__ ?? null
-    backendError = null
+    if (backendBase !== null) {
+      backendError = null
+      markReady()
+    }
     flushBaseWaiters()
   })
   backendWindow.addEventListener('prettyzk-backend-error', (event) => {
     const detail = (event as CustomEvent).detail
-    backendError = typeof detail === 'string' && detail ? detail : '本地服务启动失败'
+    markError(typeof detail === 'string' && detail ? detail : 'local service failed to start')
     flushBaseWaiters()
   })
-}
-
-function runningInTauri(): boolean {
-  return !!backendWindow && '__TAURI_INTERNALS__' in backendWindow
 }
 
 function backendUrl(): Promise<string> {
   if (backendBase !== null) return Promise.resolve(backendBase)
   if (backendError !== null) return Promise.reject(new Error(backendError))
-  // When the UI is served by the Java backend itself (browser / Vite dev),
-  // relative URLs already point at it.
   if (!runningInTauri()) return Promise.resolve('')
-  return new Promise((resolve, reject) => baseWaiters.push({ resolve, reject }))
+
+  return new Promise((resolve, reject) => {
+    const waiter: BaseWaiter = {
+      resolve,
+      reject,
+      timer: setTimeout(() => {
+        const index = baseWaiters.indexOf(waiter)
+        if (index < 0) return
+        baseWaiters.splice(index, 1)
+        const message = 'local service did not start in time'
+        markError(message)
+        flushBaseWaiters()
+        reject(new Error(message))
+      }, BACKEND_WAIT_TIMEOUT),
+    }
+    baseWaiters.push(waiter)
+  })
+}
+
+export async function httpUrl(path: string): Promise<string> {
+  return (await backendUrl()) + path
 }
 
 export async function wsUrl(path: string): Promise<string> {

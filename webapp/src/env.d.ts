@@ -7,6 +7,7 @@ declare module '*.vue' {
 }
 
 interface Window {
+  isTauri?: boolean
   __PRETTYZK_FRONTEND_READY__?: boolean
   __PRETTYZK_BACKEND__?: string
   __PRETTYZK_BACKEND_ERROR__?: string

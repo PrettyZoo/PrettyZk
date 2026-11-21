@@ -11,6 +11,7 @@ import org.eclipse.jetty.websocket.api.exceptions.WebSocketTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URI;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
@@ -110,7 +111,7 @@ public class PrettyZkWebServer {
         app.before(ctx -> {
             String origin = ctx.header("Origin");
             ctx.header("Vary", "Origin");
-            if (origin != null && ALLOWED_ORIGINS.contains(origin)) {
+            if (origin != null && isAllowedOrigin(origin)) {
                 ctx.header("Access-Control-Allow-Origin", origin);
                 ctx.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
                 ctx.header("Access-Control-Allow-Headers", "Content-Type");
@@ -119,6 +120,33 @@ public class PrettyZkWebServer {
         });
         // Answer preflight requests; the filter above sets the CORS headers.
         app.options("/*", ctx -> ctx.status(204));
+    }
+
+    /**
+     * Tauri and local dev may use any localhost port. Non-browser clients
+     * (no Origin) are allowed; a browser page is rejected unless it runs on a
+     * Tauri or localhost origin.
+     */
+    private static boolean isAllowedOrigin(String origin) {
+        if (origin == null || origin.isEmpty()) {
+            return true;
+        }
+        if (ALLOWED_ORIGINS.contains(origin)) {
+            return true;
+        }
+        try {
+            String host = URI.create(origin).getHost();
+            if (host == null) {
+                return false;
+            }
+            return host.equals("localhost")
+                    || host.equals("127.0.0.1")
+                    || host.equals("::1")
+                    || host.equals("[::1]")
+                    || host.equals("tauri.localhost");
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     private void registerRoutes() {
@@ -143,7 +171,13 @@ public class PrettyZkWebServer {
         app.post("/api/nodes/{serverId}/4lc", nodeApi::executeFourLetterCmd);
 
         app.ws("/ws/nodes/{serverId}", ws -> {
-            ws.onConnect(ctx -> nodeEventWsManager.subscribe(ctx.pathParam("serverId"), ctx));
+            ws.onConnect(ctx -> {
+                if (!isAllowedOrigin(ctx.header("Origin"))) {
+                    ctx.closeSession(1008, "origin not allowed");
+                    return;
+                }
+                nodeEventWsManager.subscribe(ctx.pathParam("serverId"), ctx);
+            });
             ws.onClose(ctx -> {
                 String sid = ctx.pathParam("serverId");
                 nodeEventWsManager.unsubscribe(sid, ctx);
@@ -159,7 +193,13 @@ public class PrettyZkWebServer {
         app.post("/api/config/import", configApi::importConfig);
 
         app.ws("/ws/terminal/{serverId}", ws -> {
-            ws.onConnect(terminalApi::onConnect);
+            ws.onConnect(ctx -> {
+                if (!isAllowedOrigin(ctx.header("Origin"))) {
+                    ctx.closeSession(1008, "origin not allowed");
+                    return;
+                }
+                terminalApi.onConnect(ctx);
+            });
             ws.onMessage(terminalApi::onMessage);
             ws.onClose(terminalApi::onClose);
             ws.onError(ctx -> {

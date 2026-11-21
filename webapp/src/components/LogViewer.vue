@@ -32,6 +32,7 @@
 import { nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { NButton, NVirtualList } from 'naive-ui'
 import { t } from '../i18n.ts'
+import { httpUrl } from '../api.ts'
 
 const emit = defineEmits(['back'])
 const MAX_LINES = 10000
@@ -40,10 +41,13 @@ const connected = ref(false)
 const listRef = ref<any>(null)
 let eventSource: EventSource | null = null
 let nextId = 0
+let disposed = false
 
-onMounted(() => {
+onMounted(async () => {
   try {
-    eventSource = new EventSource('/api/logs/stream')
+    const url = await httpUrl('/api/logs/stream')
+    if (disposed) return
+    eventSource = new EventSource(url)
     eventSource.addEventListener('log', (event) => {
       logs.value.push({ id: ++nextId, text: (event as MessageEvent).data })
       if (logs.value.length > MAX_LINES) {
@@ -65,6 +69,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  disposed = true
   if (eventSource) {
     eventSource.close()
     eventSource = null

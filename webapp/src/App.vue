@@ -54,21 +54,22 @@
         />
       </main>
 
-      <div v-if="!backendReady && !backendError" class="backend-hint">
+      <div v-if="!backendState.ready && !backendState.error" class="backend-hint">
         <span class="backend-hint-spinner"></span>
         {{ t('app.startingBackend') }}
       </div>
-      <div v-else-if="backendError" class="backend-hint backend-hint-error">
-        {{ backendError }}
+      <div v-else-if="backendState.error" class="backend-hint backend-hint-error">
+        {{ backendState.error }}
       </div>
     </div>
   </n-config-provider>
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, onUnmounted, ref } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
 import { NConfigProvider } from 'naive-ui'
 import { state } from './state.ts'
+import { backendState } from './backend.ts'
 import { api } from './api.ts'
 import { setLocale, getLocale, t } from './i18n.ts'
 import { naiveTheme as resolveNaiveTheme, darkThemeOverrides, lightThemeOverrides } from './theme.ts'
@@ -89,35 +90,6 @@ const activeServerId = ref<string | null>(null)
 const editServerId = ref<string | null>(null)
 const currentLocale = ref(getLocale())
 const version = ref('')
-
-// The shell renders immediately. Only API-backed parts wait for the local
-// Java service; in a plain browser the UI is served by that service already.
-const backendReady = ref(
-  !(typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) ||
-    Boolean(window.__PRETTYZK_BACKEND__),
-)
-const backendError = ref(window.__PRETTYZK_BACKEND_ERROR__ ?? '')
-
-function onBackendReady() {
-  backendReady.value = true
-  backendError.value = ''
-}
-
-function onBackendError(event: Event) {
-  const detail = (event as CustomEvent).detail
-  backendError.value =
-    typeof detail === 'string' && detail ? detail : t('app.backendFailed')
-  backendReady.value = false
-}
-
-if (typeof window !== 'undefined') {
-  window.addEventListener('prettyzk-backend-ready', onBackendReady)
-  window.addEventListener('prettyzk-backend-error', onBackendError)
-}
-onUnmounted(() => {
-  window.removeEventListener('prettyzk-backend-ready', onBackendReady)
-  window.removeEventListener('prettyzk-backend-error', onBackendError)
-})
 
 const naiveTheme = computed(() => resolveNaiveTheme(state.config.theme === 'dark'))
 const themeOverrides = computed(() => {
